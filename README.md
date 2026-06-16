@@ -7,6 +7,10 @@
   <img src="https://img.shields.io/badge/Signals-Native-blue?logo=typescript" />
 </p>
 
+<p align="center">
+  <img src="docs/demo.gif" alt="Demo del Studio: edición manual, agente, Observador, multiproyecto y export Angular ZIP" width="960" />
+</p>
+
 IDE visual para agentes de IA sobre **WebMCP** (Angular v22). La IA crea, lee y modifica componentes en tiempo real; cada mutación del editor es una **tool WebMCP** o un **Command** con undo/redo.
 
 ## Características
@@ -129,6 +133,7 @@ npm test              # unit (Vitest) — 44 tests
 npm run test:watch    # Vitest en modo watch
 npm run test:e2e      # e2e (Playwright)
 npm run demo:video    # grabación del recorrido demo
+npm run demo:gif      # convierte el video a docs/demo.gif (para el README)
 ```
 
 Cobertura unitaria: store del árbol, Commands, CommandBus, tools de edición, validación/import, observador, clonado del árbol y persistencia del último proyecto.
