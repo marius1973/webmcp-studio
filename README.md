@@ -13,6 +13,48 @@
 
 IDE visual para agentes de IA sobre **WebMCP** (Angular v22). La IA crea, lee y modifica componentes en tiempo real; cada mutación del editor es una **tool WebMCP** o un **Command** con undo/redo.
 
+## Por qué WebMCP
+
+La mayoría de los agentes que “controlan” una web app lo hacen **desde afuera**: leen el DOM, adivinan la UI y hacen clics en pantalla. WebMCP invierte eso: la app **expone tools tipadas** que el agente descubre e invoca como una API.
+
+| Sin WebMCP | Con WebMCP Studio |
+|------------|-------------------|
+| La IA lee el DOM con OCR o heurísticas | La IA ejecuta `create_component` directamente |
+| Clics en coordenadas X,Y frágiles | Llamadas estructuradas con validación de schema |
+| No entiende el estado interno | Acceso al árbol real vía `read_tree` |
+| Requiere prompts complejos | Descubrimiento automático de tools |
+| Sin undo/redo del agente | Commands con narración y reversión |
+
+## 🧪 Prompt para agentes de IA
+
+Así podría pedirle un usuario (o un system prompt) a un agente WebMCP nativo que diseñe en el Studio. El agente **descubre las tools** en el panel derecho; no hace falta memorizar schemas — pero un prompt claro acelera el resultado.
+
+```text
+Eres un agente de diseño UI. Tienes acceso a Angular WebMCP Studio.
+El usuario quiere una landing page para un SaaS de analytics.
+
+1. Crea un proyecto llamado "AnalyticsLanding"
+2. Agrega un navbar con brand "DataViz" y links ["Features", "Pricing", "Contact"]
+3. Crea un hero container con título "Visualiza tus datos" y subtítulo "Dashboards en tiempo real para equipos de datos"
+4. Agrega 3 cards con features: "Real-time", "AI Insights", "Collaboration"
+5. Genera el código Angular y muéstrame el preview
+
+Tools disponibles: create_component, update_component, move_component,
+read_tree, new_component_via_form, update_component_via_form, export_project_code
+```
+
+**Cómo lo ejecuta el agente en la práctica**
+
+| Paso del prompt | Tool / acción en el Studio |
+|-----------------|----------------------------|
+| Proyecto `AnalyticsLanding` | Renombrar en topbar o nuevo proyecto en `/project/…` |
+| Navbar, hero, cards | `create_component` (`container`, `card`, `text`, `button`) + `update_component` / `update_component_via_form` para labels y textos |
+| Revisar estructura | `read_tree` antes de editar; `move_component` para ordenar |
+| Preview | Canvas en modo **Preview** (o el agente inspecciona tras cada `create_component`) |
+| Código Angular | `export_project_code` con `download: true` → ZIP listo para `npm start` |
+
+> Los tipos disponibles son `container`, `card`, `button`, `text` e `input`. Un “navbar” o “hero” se modelan anidando contenedores y nodos de texto — el agente no scrapea el DOM.
+
 ## Características
 
 ### Editor visual
@@ -62,7 +104,7 @@ Al abrir la app, `/` redirige al último proyecto que usaste o a **`/project/alp
 1. En el árbol, selecciona un nodo y usa la paleta (Contenedor, Card, Botón…) para crear hijos.
 2. Arrastra por ⠿ para reordenar o reparentar; usa las flechas del teclado con el foco en el árbol.
 3. Edita propiedades en el inspector del canvas y aplica con un único Command `updateNode`.
-4. Proba el **simulador de agente** o invoca tools desde un agente WebMCP (Edge 147+ / Chrome 149).
+4. Prueba el **simulador de agente** o invoca tools desde un agente WebMCP (Edge 147+ / Chrome 149).
 5. Revisa la pestaña **Observador** en la consola: cada paso queda narrado.
 6. Exporta el proyecto como **Angular ZIP** desde el topbar o con la tool `export_project_code`.
 
