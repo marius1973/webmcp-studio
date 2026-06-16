@@ -1,0 +1,42 @@
+{
+  "name": "webmcp-studio",
+  "version": "0.0.0",
+  "description": "Angular WebMCP Studio - IDE visual para agentes de IA (WebMCP + Angular v22)",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --project=e2e",
+    "demo:video": "playwright test --project=demo",
+    "demo:gif": "ffmpeg -y -i test-results/*/video.webm -vf \"fps=12,scale=1000:-1:flags=lanczos\" docs/demo.gif"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@angular/cdk": "^22.0.0",
+    "@angular/common": "^22.0.0",
+    "@angular/compiler": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/forms": "^22.0.0",
+    "@angular/platform-browser": "^22.0.0",
+    "@angular/router": "^22.0.0",
+    "@mcp-b/webmcp-polyfill": "^3.0.0",
+    "jszip": "^3.10.1",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.6.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.0.0",
+    "@angular/cli": "^22.0.0",
+    "@angular/compiler-cli": "^22.0.0",
+    "@playwright/test": "^1.50.0",
+    "jsdom": "^25.0.0",
+    "typescript": "~6.0.0",
+    "vitest": "^4.0.8"
+  }
+}
