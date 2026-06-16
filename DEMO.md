@@ -9,8 +9,8 @@ Guion completo para presentación en vivo, video o GIF. Cubre editor manual, age
 | **Automatizada (README)** | ~15 s | `npm run demo:readme` — GIF hero: 4 paneles, DnD, undo, agente, Observador |
 | **Automatizada (completa)** | ~2–3 min | `npm run demo:video` (Playwright, alineado con escenas 0–8) |
 
-**Navegador ideal:** Edge 147+ o Chrome 149 (agente WebMCP nativo vía `navigator.modelContext`).  
-**Sin agente nativo:** el **Simulador de agente** del canvas reproduce el mismo flujo.
+**Navegador ideal (agente nativo):** Edge 147+ (`navigator.modelContext` integrado) o Chrome 149+ ([Origin Trial](https://developer.chrome.com/docs/ai/webmcp); flag local: `chrome://flags/#enable-webmcp-testing`).  
+**Sin agente nativo:** el **Simulador de agente** del canvas reproduce el mismo flujo en cualquier navegador.
 
 ---
 
@@ -169,7 +169,7 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 ## Escena 9 — Agente WebMCP nativo (45 s, opcional)
 
-**Solo si tenés Edge 147+ / Chrome 149 con agente integrado.**
+**Solo si tenés Edge 147+ o Chrome 149+ con WebMCP habilitado** (OT en producción o flag `enable-webmcp-testing` en local).
 
 1. Señalá el badge **WebMCP** en verde en la toolbar del canvas.
 2. Pedile al agente del navegador algo como: *"Creá una card con un botón primary debajo de root"*.

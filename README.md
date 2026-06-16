@@ -1,6 +1,7 @@
 # Angular WebMCP Studio
 
 <p align="center">
+  <img src="https://img.shields.io/badge/tests-44_passing-success" alt="44 unit tests" />
   <img src="https://img.shields.io/badge/WebMCP-Experimental-purple?logo=angular" />
   <img src="https://img.shields.io/badge/AI_Agent-Ready-success?logo=openai" />
   <img src="https://img.shields.io/badge/Angular-v22-dd0031?logo=angular" />
@@ -17,15 +18,7 @@
   <img src="docs/demo.gif" alt="WebMCP Studio: 4 paneles, paleta y drag & drop, undo, simulador de agente (create_component) y narración en el Observador" width="960" />
 </p>
 
-## ⚠️ Estado experimental
-
-WebMCP es un estándar W3C en desarrollo. Este proyecto usa la implementación experimental de Angular v22.
-
-- **Agente nativo**: Edge 147+ / Chrome 149+ (`chrome://flags#webmcp`)
-- **Fallback**: simulador integrado que cubre todos los flujos sin agente nativo
-- **APIs sujetas a cambios** entre versiones menores de Angular
-
-IDE visual para agentes de IA sobre **WebMCP** (Angular v22). La IA crea, lee y modifica componentes en tiempo real; cada mutación del editor es una **tool WebMCP** o un **Command** con undo/redo.
+Un **IDE en el navegador** donde los agentes de IA editan estructura Angular en vivo — no generan código de una vez, sino que mutan, deshacen y observan paso a paso.
 
 ## Por qué WebMCP
 
@@ -39,48 +32,76 @@ La mayoría de los agentes que “controlan” una web app lo hacen **desde afue
 | Requiere prompts complejos | Descubrimiento automático de tools |
 | Sin undo/redo del agente | Commands con narración y reversión |
 
-### Comparativa con otras herramientas
+### Comparativa con otros enfoques
 
-No es otro generador de UI: es un **IDE donde un agente edita la estructura Angular en vivo**, con undo/redo por nodo y preview inmediato.
+*Comparación conceptual de enfoques, no de rendimiento ni paridad de producto.* Herramientas como v0 o Lovable generan apps de cero; este studio **itera sobre estructura existente** con undo/redo por nodo.
 
-| Herramienta | Cómo funciona | Limitación | WebMCP Studio |
-|-------------|---------------|------------|---------------|
-| **Playwright + AI** (Microsoft) | La IA ve screenshots y hace clics | Lento, frágil, no entiende estado | Tools tipadas, &lt;50 ms por acción |
-| **Browser Use** | Controla el navegador vía CDP | Requiere infraestructura; no es nativo | Corre en el browser, sin backend |
-| **Vercel v0** | Genera UI desde prompt | No editable iterativamente por agente | El agente modifica la estructura en vivo |
-| **Lovable.dev** | Genera código desde chat | Re-genera todo; no hay edición granular | Undo/redo por nodo, preview inmediato |
+| Enfoque | Cómo opera | Tensión típica | WebMCP Studio |
+|---------|------------|----------------|---------------|
+| **Automatización visual** (p. ej. Playwright + IA) | Screenshots y clics en pantalla | Frágil ante cambios de UI; poco estado interno | Llamadas directas a tools, sin screenshots ni OCR |
+| **Control remoto del browser** (p. ej. Browser Use) | CDP desde fuera del tab | Infra extra; no es API nativa de la app | Corre en el browser, sin backend |
+| **Generadores one-shot** (p. ej. v0, Lovable) | Prompt → app o código nuevo | Poca edición granular por el agente | El agente muta el árbol paso a paso, con preview |
+| **Este studio** | Tools WebMCP sobre Commands | Experimental (ver abajo) | Undo/redo, Observador y export Angular |
+
+## ⚠️ Estado experimental
+
+WebMCP es un estándar W3C en desarrollo. Este proyecto usa la implementación experimental de Angular v22.
+
+- **Demo en vivo** ([webmcp-studio-buur.vercel.app](https://webmcp-studio-buur.vercel.app/)): funciona en **cualquier navegador** con el **simulador** y el polyfill — no hace falta agente nativo.
+- **Agente nativo del navegador**: **Edge 147+** (integrado, `navigator.modelContext`).
+- **Chrome 149+**: [Origin Trial](https://developer.chrome.com/docs/ai/webmcp) para visitantes en producción (token por origen); en local, flag [`chrome://flags/#enable-webmcp-testing`](https://developer.chrome.com/docs/ai/webmcp#local-webmcp) (no `chrome://flags#webmcp`).
+- **Fallback**: simulador integrado + `@mcp-b/webmcp-polyfill` cubren el mismo contrato de tools.
+- **APIs sujetas a cambios** entre versiones menores de Angular.
 
 ## 🧪 Prompt para agentes de IA
 
-Así podría pedirle un usuario (o un system prompt) a un agente WebMCP nativo que diseñe en el Studio. El agente **descubre las tools** en el panel derecho; no hace falta memorizar schemas — pero un prompt claro acelera el resultado.
+Ejemplo de system prompt **alineado con la demo**: el Preview muestra bloques etiquetados (`container`, `card`, `text`, `button`) — un **esqueleto estructural**, no una landing pulida con navbar ni links.
 
 ```text
-Eres un agente de diseño UI. Tienes acceso a Angular WebMCP Studio.
-El usuario quiere una landing page para un SaaS de analytics.
+Eres un agente en Angular WebMCP Studio.
+Tipos disponibles: container, card, button, text, input.
+No hay navbar, links ni estilos custom — solo árbol + preview wireframe.
 
-1. Crea un proyecto llamado "AnalyticsLanding"
-2. Agrega un navbar con brand "DataViz" y links ["Features", "Pricing", "Contact"]
-3. Crea un hero container con título "Visualiza tus datos" y subtítulo "Dashboards en tiempo real para equipos de datos"
-4. Agrega 3 cards con features: "Real-time", "AI Insights", "Collaboration"
-5. Genera el código Angular y muéstrame el preview
+Armá un esqueleto de landing para analytics:
 
-Tools disponibles: create_component, update_component, move_component,
-read_tree, new_component_via_form, update_component_via_form, export_project_code
+1. read_tree — inspeccioná root antes de editar
+2. container "Hero" bajo root:
+   - text: "Visualiza tus datos"
+   - text: "Dashboards en tiempo real para equipos de datos"
+   - button (variant primary): "Empezar gratis"
+3. Tres card hermanas bajo root, cada una con un text hijo:
+   - "Real-time" / "AI Insights" / "Collaboration"
+4. Preview — confirmá la estructura anidada (bloques con etiquetas, no diseño final)
+5. export_project_code con download: true → ZIP Angular
+
+Tools: create_component, update_component, move_component, read_tree,
+new_component_via_form, update_component_via_form, export_project_code
 ```
 
-**Cómo lo ejecuta el agente en la práctica**
+**Qué verás en el demo** (coincide con el prompt):
 
-| Paso del prompt | Tool / acción en el Studio |
-|-----------------|----------------------------|
-| Proyecto `AnalyticsLanding` | Renombrar en topbar o nuevo proyecto en `/project/…` |
-| Navbar, hero, cards | `create_component` (`container`, `card`, `text`, `button`) + `update_component` / `update_component_via_form` para labels y textos |
-| Revisar estructura | `read_tree` antes de editar; `move_component` para ordenar |
-| Preview | Canvas en modo **Preview** (o el agente inspecciona tras cada `create_component`) |
-| Código Angular | `export_project_code` con `download: true` → ZIP listo para `npm start` |
+| Pedido en el prompt | En el árbol / Preview |
+|---------------------|------------------------|
+| `container` "Hero" + textos + botón | Marco con etiqueta **Hero**, textos y botón renderizados como widgets simples |
+| 3 `card` con `text` hijo | Tres tarjetas con borde sólido y un bloque de texto cada una |
+| Preview | Bloques anidados con labels — **wireframe**, no SaaS terminado |
+| `export_project_code` | ZIP con componentes Angular standalone generados desde el árbol |
 
-> Los tipos disponibles son `container`, `card`, `button`, `text` e `input`. Un “navbar” o “hero” se modelan anidando contenedores y nodos de texto — el agente no scrapea el DOM.
+**Cómo lo ejecuta el agente**
+
+| Paso | Tool / acción |
+|------|----------------|
+| Inspeccionar | `read_tree` |
+| Hero y cards | `create_component` + `update_component` / `update_component_via_form` para `label`, `text`, `variant` |
+| Orden | `move_component` si hace falta reordenar |
+| Ver resultado | Modo **Preview** en el canvas |
+| Código | `export_project_code` con `download: true` |
+
+> Renombrar el proyecto a "AnalyticsLanding" es opcional (topbar **Renombrar**). El valor del demo es el **flujo agente → tools → árbol → undo → export**, no el pixel-perfect.
 
 ## Características
+
+Cada mutación — manual o del agente — es una **tool WebMCP** o un **Command** con undo/redo, narración en el Observador y export a Angular.
 
 ### Editor visual
 - **4 paneles**: árbol de componentes, canvas (Estructura / Preview), panel de herramientas y consola del agente.
@@ -124,12 +145,17 @@ npm run build
 
 Al abrir la app, `/` redirige al último proyecto que usaste o a **`/project/alpha`** por defecto (se crea si no existe).
 
-## Probarlo
+## Probarlo (30 segundos)
+
+1. Abrí el **[demo](https://webmcp-studio-buur.vercel.app/)** → ya tenés un proyecto `alpha`.
+2. En el canvas, franja **Simular agente** → clic en `create_component(button)` o `create_component(card)` → mirá el árbol y la pestaña **Observador**.
+
+Listo. Para explorar más:
 
 1. En el árbol, selecciona un nodo y usa la paleta (Contenedor, Card, Botón…) para crear hijos.
 2. Arrastra por ⠿ para reordenar o reparentar; usa las flechas del teclado con el foco en el árbol.
 3. Edita propiedades en el inspector del canvas y aplica con un único Command `updateNode`.
-4. Prueba el **simulador de agente** o invoca tools desde un agente WebMCP (Edge 147+ / Chrome 149).
+4. Prueba el **simulador de agente** (cualquier navegador) o invoca tools desde un agente WebMCP nativo (Edge 147+; Chrome 149+ con Origin Trial o flag de desarrollo).
 5. Revisa la pestaña **Observador** en la consola: cada paso queda narrado.
 6. Exporta el proyecto como **Angular ZIP** desde el topbar o con la tool `export_project_code`.
 
@@ -212,11 +238,16 @@ Cobertura unitaria: store del árbol, Commands, CommandBus, tools de edición, v
 
 E2E (`e2e/`): crear/deshacer, narración del agente, cambio de tools editor↔docs, persistencia entre recargas.
 
-CI en `.github/workflows/ci.yml` (test + build en push/PR).
+CI en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) (`npm test` + `npm run build` en push a `master`). Badge de GitHub Actions: añadilo al header cuando el repo sea público y el workflow haya corrido al menos una vez.
 
 Guion de demo en [`DEMO.md`](./DEMO.md).
 
-## Deploy en Vercel
+## Deploy (solo si querés hostear tu propia instancia)
+
+¿Solo querés probar? Usá el **[demo en vivo](https://webmcp-studio-buur.vercel.app/)** — no hace falta deployar nada.
+
+<details>
+<summary>Click para instrucciones de Vercel</summary>
 
 SPA estática: no requiere backend ni variables de entorno. La config vive en [`vercel.json`](./vercel.json).
 
@@ -232,18 +263,31 @@ SPA estática: no requiere backend ni variables de entorno. La config vive en [`
 1. Subir el repo a GitHub.
 2. En [vercel.com](https://vercel.com) → **Add New Project** → importá el repositorio.
 3. Vercel detecta `vercel.json` automáticamente; confirmá y hacé **Deploy**.
-4. Abrí **[webmcp-studio-buur.vercel.app](https://webmcp-studio-buur.vercel.app/)** → redirige a `/project/alpha` (o al último proyecto usado).
+4. Abrí tu URL (ej. **[webmcp-studio-buur.vercel.app](https://webmcp-studio-buur.vercel.app/)**) → redirige a `/project/alpha` (o al último proyecto usado).
 
 Los **rewrites** envían rutas como `/project/alpha` y `/docs` a `index.html` para que el router de Angular funcione al recargar o compartir links.
 
 ### Notas de producción
 
 - **Persistencia**: IndexedDB es local al navegador y dominio; no sincroniza entre dispositivos.
-- **WebMCP**: el agente corre en el cliente (Edge 147+ / Chrome 149); Vercel solo sirve el frontend.
+- **WebMCP**: el agente nativo corre en el cliente (Edge 147+; Chrome 149+ OT). El demo en Vercel usa simulador/polyfill — no requiere flags.
 - **Preview deployments**: cada PR puede tener su URL de preview si conectás el repo.
+
+</details>
 
 ## Stack
 
 - Angular v22 **standalone + zoneless**, TypeScript 6.0, Signals y Signal Forms.
 - Polyfill `@mcp-b/webmcp-polyfill` cuando `navigator.modelContext` no está disponible.
 - El árbol se clona con `cloneTreeState` (sin `JSON.stringify`) para snapshots de undo/redo.
+
+## Por qué importa
+
+Los agentes de IA no deberían ser "usuarios" de las apps que usamos.
+Deberían ser **ciudadanos de primera clase** con APIs diseñadas para ellos.
+
+WebMCP es ese API: no reemplaza al humano, le da a la IA un modo de operar
+que es seguro, reversible y observable. Este studio es una prueba de que
+Angular puede ser la plataforma donde esa visión se construye.
+
+Si te interesa el futuro de la IA en el navegador, [discutamos](https://github.com/marius1973/webmcp-studio/discussions).
