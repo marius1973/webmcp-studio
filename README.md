@@ -55,12 +55,12 @@ Al abrir la app, `/` redirige al último proyecto que usaste o a **`/project/alp
 
 ## Probarlo
 
-1. En el árbol, seleccioná un nodo y usá la paleta (Contenedor, Card, Botón…) para crear hijos.
-2. Arrastrá por ⠿ para reordenar o reparentar; usá las flechas del teclado con el foco en el árbol.
-3. Editá propiedades en el inspector del canvas y aplicá con un único Command `updateNode`.
-4. Probá el **simulador de agente** o invocá tools desde un agente WebMCP (Edge 147+ / Chrome 149).
-5. Revisá la pestaña **Observador** en la consola: cada paso queda narrado.
-6. Exportá el proyecto como **Angular ZIP** desde el topbar o con la tool `export_project_code`.
+1. En el árbol, selecciona un nodo y usa la paleta (Contenedor, Card, Botón…) para crear hijos.
+2. Arrastra por ⠿ para reordenar o reparentar; usa las flechas del teclado con el foco en el árbol.
+3. Edita propiedades en el inspector del canvas y aplica con un único Command `updateNode`.
+4. Proba el **simulador de agente** o invoca tools desde un agente WebMCP (Edge 147+ / Chrome 149).
+5. Revisa la pestaña **Observador** en la consola: cada paso queda narrado.
+6. Exporta el proyecto como **Angular ZIP** desde el topbar o con la tool `export_project_code`.
 
 ## Cómo Funciona Internamente
 
