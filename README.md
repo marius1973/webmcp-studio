@@ -8,8 +8,22 @@
 </p>
 
 <p align="center">
+  <a href="https://webmcp-studio-buur.vercel.app/" target="_blank">
+    <img src="https://img.shields.io/badge/🚀_Demo_Vivo-Ver_ahora-000?logo=vercel&style=for-the-badge" />
+  </a>
+</p>
+
+<p align="center">
   <img src="docs/demo.gif" alt="WebMCP Studio: 4 paneles, paleta y drag & drop, undo, simulador de agente (create_component) y narración en el Observador" width="960" />
 </p>
+
+## ⚠️ Estado experimental
+
+WebMCP es un estándar W3C en desarrollo. Este proyecto usa la implementación experimental de Angular v22.
+
+- **Agente nativo**: Edge 147+ / Chrome 149+ (`chrome://flags#webmcp`)
+- **Fallback**: simulador integrado que cubre todos los flujos sin agente nativo
+- **APIs sujetas a cambios** entre versiones menores de Angular
 
 IDE visual para agentes de IA sobre **WebMCP** (Angular v22). La IA crea, lee y modifica componentes en tiempo real; cada mutación del editor es una **tool WebMCP** o un **Command** con undo/redo.
 
@@ -24,6 +38,17 @@ La mayoría de los agentes que “controlan” una web app lo hacen **desde afue
 | No entiende el estado interno | Acceso al árbol real vía `read_tree` |
 | Requiere prompts complejos | Descubrimiento automático de tools |
 | Sin undo/redo del agente | Commands con narración y reversión |
+
+### Comparativa con otras herramientas
+
+No es otro generador de UI: es un **IDE donde un agente edita la estructura Angular en vivo**, con undo/redo por nodo y preview inmediato.
+
+| Herramienta | Cómo funciona | Limitación | WebMCP Studio |
+|-------------|---------------|------------|---------------|
+| **Playwright + AI** (Microsoft) | La IA ve screenshots y hace clics | Lento, frágil, no entiende estado | Tools tipadas, &lt;50 ms por acción |
+| **Browser Use** | Controla el navegador vía CDP | Requiere infraestructura; no es nativo | Corre en el browser, sin backend |
+| **Vercel v0** | Genera UI desde prompt | No editable iterativamente por agente | El agente modifica la estructura en vivo |
+| **Lovable.dev** | Genera código desde chat | Re-genera todo; no hay edición granular | Undo/redo por nodo, preview inmediato |
 
 ## 🧪 Prompt para agentes de IA
 
@@ -174,11 +199,14 @@ src/app/
 npm test              # unit (Vitest) — 44 tests
 npm run test:watch    # Vitest en modo watch
 npm run test:e2e      # e2e (Playwright)
-npm run demo:hero     # GIF hero del README (~18 s)
-npm run demo:gif      # convierte el video hero a docs/demo.gif
-npm run demo:readme   # hero + gif en un paso
+npm run demo:hero     # GIF hero del README (~15 s)
+npm run demo:gif      # webm hero → docs/demo.gif (ffmpeg + gifsicle)
+npm run demo:optimize # recomprime docs/demo.gif si ya existe
+npm run demo:readme   # hero + gif optimizado en un paso
 npm run demo:video    # recorrido completo (DEMO.md, escenas 0–8)
 ```
+
+El GIF del README pesa **~1 MB** (960×540, 8 fps, paleta 96 colores + `gifsicle -O3 --lossy=80`). Sin optimizar suele superar 2 MB.
 
 Cobertura unitaria: store del árbol, Commands, CommandBus, tools de edición, validación/import, observador, clonado del árbol y persistencia del último proyecto.
 
@@ -201,10 +229,10 @@ SPA estática: no requiere backend ni variables de entorno. La config vive en [`
 
 ### Pasos
 
-1. Subí el repo a GitHub.
+1. Subir el repo a GitHub.
 2. En [vercel.com](https://vercel.com) → **Add New Project** → importá el repositorio.
 3. Vercel detecta `vercel.json` automáticamente; confirmá y hacé **Deploy**.
-4. Abrí `https://tu-proyecto.vercel.app` → redirige a `/project/alpha` (o al último proyecto usado).
+4. Abrí **[webmcp-studio-buur.vercel.app](https://webmcp-studio-buur.vercel.app/)** → redirige a `/project/alpha` (o al último proyecto usado).
 
 Los **rewrites** envían rutas como `/project/alpha` y `/docs` a `index.html` para que el router de Angular funcione al recargar o compartir links.
 
@@ -214,9 +242,8 @@ Los **rewrites** envían rutas como `/project/alpha` y `/docs` a `index.html` pa
 - **WebMCP**: el agente corre en el cliente (Edge 147+ / Chrome 149); Vercel solo sirve el frontend.
 - **Preview deployments**: cada PR puede tener su URL de preview si conectás el repo.
 
-## Stack y notas
+## Stack
 
 - Angular v22 **standalone + zoneless**, TypeScript 6.0, Signals y Signal Forms.
-- WebMCP es **experimental**; el acceso a `navigator.modelContext` está aislado con fallback `@mcp-b/webmcp-polyfill`.
-- Mejor experiencia con agente nativo en **Edge 147+** o **Chrome 149**; sin él, el simulador cubre los mismos flujos.
+- Polyfill `@mcp-b/webmcp-polyfill` cuando `navigator.modelContext` no está disponible.
 - El árbol se clona con `cloneTreeState` (sin `JSON.stringify`) para snapshots de undo/redo.

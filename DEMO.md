@@ -221,27 +221,21 @@ Si tenés poco tiempo, solo estas escenas:
 
 ```bash
 npx playwright install chromium   # una vez
-npm run demo:readme               # graba hero + genera docs/demo.gif
+npm run demo:readme               # graba hero + genera docs/demo.gif optimizado (~1 MB)
 ```
 
 Flujo del hero (`e2e/hero.spec.ts`): 4 paneles → **＋ Nuevo** → paleta (Card, Botón, Texto) → **drag & drop** → **Undo** → simulador `create_component` → narración en **Observador** → **Preview**.
+
+Pipeline: **ffmpeg** (8 fps, 960 px, paleta 96) + **gifsicle** (`-O3 --lossy=80 --colors 128`). Solo optimizar: `npm run demo:optimize`.
 
 ### Demo completa (escenas 0–8)
 
 ```bash
 npm run demo:video
-npm run demo:gif demo             # usa el video más reciente del recorrido largo
+npm run demo:gif demo             # recorrido largo → docs/demo.gif
 ```
 
-Requisitos: **ffmpeg** en el PATH. El script `scripts/demo-gif.mjs` busca el `video.webm` más reciente y genera un GIF optimizado (960 px, 10 fps, paleta de 128 colores).
-
-Convertir manualmente (si preferís otro tamaño):
-
-```bash
-ffmpeg -y -i test-results/demo-recorrido-completo-del-Studio-demo/video.webm \
-  -filter_complex "fps=10,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse[out]" \
-  -map "[out]" docs/demo.gif
-```
+Requisitos: **ffmpeg** en el PATH y **gifsicle** vía `npm install` (devDependency). El script `scripts/demo-gif.mjs` busca el `video.webm` del prefijo indicado (`hero` por defecto).
 
 > El ritmo se ajusta con `PACE` en `e2e/demo.spec.ts` (650 ms por paso).
 > El recorrido automatizado cubre las **escenas 0–8** del guion completo (edición manual, agente, Signal Forms, Observador, undo, Docs, multiproyecto, Angular ZIP).

@@ -13,6 +13,7 @@
     "demo:hero": "playwright test --project=hero",
     "demo:video": "playwright test --project=demo",
     "demo:gif": "node scripts/demo-gif.mjs",
+    "demo:optimize": "node scripts/demo-optimize.mjs",
     "demo:readme": "npm run demo:hero && npm run demo:gif"
   },
   "private": true,
@@ -38,6 +39,7 @@
     "@angular/compiler-cli": "^22.0.0",
     "@playwright/test": "^1.50.0",
     "jsdom": "^25.0.0",
+    "gifsicle": "^7.0.1",
     "typescript": "~6.0.0",
     "vitest": "^4.0.8"
   }
