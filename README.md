@@ -1,7 +1,9 @@
 # Angular WebMCP Studio
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-44_passing-success" alt="44 unit tests" />
+  <a href="https://github.com/marius1973/webmcp-studio/actions/workflows/ci.yml">
+    <img src="https://github.com/marius1973/webmcp-studio/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
   <img src="https://img.shields.io/badge/WebMCP-Experimental-purple?logo=angular" />
   <img src="https://img.shields.io/badge/AI_Agent-Ready-success?logo=openai" />
   <img src="https://img.shields.io/badge/Angular-v22-dd0031?logo=angular" />
@@ -238,7 +240,7 @@ Cobertura unitaria: store del árbol, Commands, CommandBus, tools de edición, v
 
 E2E (`e2e/`): crear/deshacer, narración del agente, cambio de tools editor↔docs, persistencia entre recargas.
 
-CI en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) (`npm test` + `npm run build` en push a `master`). Badge de GitHub Actions: añadilo al header cuando el repo sea público y el workflow haya corrido al menos una vez.
+CI en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) (`npm test` + `npm run build` en push a `master`). [Último run](https://github.com/marius1973/webmcp-studio/actions/workflows/ci.yml).
 
 Guion de demo en [`DEMO.md`](./DEMO.md).
 
