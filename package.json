@@ -10,8 +10,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test --project=e2e",
+    "demo:hero": "playwright test --project=hero",
     "demo:video": "playwright test --project=demo",
-    "demo:gif": "node scripts/demo-gif.mjs"
+    "demo:gif": "node scripts/demo-gif.mjs",
+    "demo:readme": "npm run demo:hero && npm run demo:gif"
   },
   "private": true,
   "engines": {

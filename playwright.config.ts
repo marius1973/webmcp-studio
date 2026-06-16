@@ -18,7 +18,8 @@ export default defineConfig({
     timeout: 120_000,
   },
   projects: [
-    { name: 'e2e', testIgnore: /demo\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
-    { name: 'demo', testMatch: /demo\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'e2e', testIgnore: /(demo|hero)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'hero', testMatch: /hero\.spec\.ts/, use: { ...devices['Desktop Chrome'] }, timeout: 90_000 },
+    { name: 'demo', testMatch: /demo\.spec\.ts/, use: { ...devices['Desktop Chrome'] }, timeout: 180_000 },
   ],
 });

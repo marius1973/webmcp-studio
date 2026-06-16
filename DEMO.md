@@ -6,7 +6,8 @@ Guion completo para presentación en vivo, video o GIF. Cubre editor manual, age
 |---------|----------|---------------|
 | **Completa** | ~8 min | README, conferencias, primer contacto con el repo |
 | **Rápida** | ~3 min | Escenas marcadas con ⚡ abajo |
-| **Automatizada** | ~2–3 min | `npm run demo:video` (Playwright, alineado con escenas 0–8) |
+| **Automatizada (README)** | ~15 s | `npm run demo:readme` — GIF hero: 4 paneles, DnD, undo, agente, Observador |
+| **Automatizada (completa)** | ~2–3 min | `npm run demo:video` (Playwright, alineado con escenas 0–8) |
 
 **Navegador ideal:** Edge 147+ o Chrome 149 (agente WebMCP nativo vía `navigator.modelContext`).  
 **Sin agente nativo:** el **Simulador de agente** del canvas reproduce el mismo flujo.
@@ -216,13 +217,20 @@ Si tenés poco tiempo, solo estas escenas:
 
 ## Grabar la demo (video / GIF)
 
-### Automatizada (Playwright)
+### GIF del README (~15 s)
 
 ```bash
 npx playwright install chromium   # una vez
+npm run demo:readme               # graba hero + genera docs/demo.gif
+```
+
+Flujo del hero (`e2e/hero.spec.ts`): 4 paneles → **＋ Nuevo** → paleta (Card, Botón, Texto) → **drag & drop** → **Undo** → simulador `create_component` → narración en **Observador** → **Preview**.
+
+### Demo completa (escenas 0–8)
+
+```bash
 npm run demo:video
-npm run demo:gif
-# → docs/demo.gif (también queda el .webm en test-results/)
+npm run demo:gif demo             # usa el video más reciente del recorrido largo
 ```
 
 Requisitos: **ffmpeg** en el PATH. El script `scripts/demo-gif.mjs` busca el `video.webm` más reciente y genera un GIF optimizado (960 px, 10 fps, paleta de 128 colores).

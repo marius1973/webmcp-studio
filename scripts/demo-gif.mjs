@@ -2,8 +2,17 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-async function findLatestVideo(dir) {
-  let latest = null;
+const prefer = process.argv[2] ?? 'hero';
+
+function pickVideo(videos) {
+  if (!videos.length) return null;
+  const preferred = videos.filter((v) => v.path.toLowerCase().includes(prefer));
+  const pool = preferred.length ? preferred : videos;
+  return pool.reduce((a, b) => (a.mtime > b.mtime ? a : b)).path;
+}
+
+async function collectVideos(dir) {
+  const videos = [];
 
   async function walk(current) {
     for (const entry of await readdir(current, { withFileTypes: true })) {
@@ -13,20 +22,20 @@ async function findLatestVideo(dir) {
         continue;
       }
       if (entry.name !== 'video.webm') continue;
-      const mtime = (await stat(full)).mtimeMs;
-      if (!latest || mtime > latest.mtime) latest = { path: full, mtime };
+      videos.push({ path: full, mtime: (await stat(full)).mtimeMs });
     }
   }
 
   await walk(dir);
-  return latest?.path ?? null;
+  return videos;
 }
 
-const input = await findLatestVideo('test-results');
+const input = pickVideo(await collectVideos('test-results'));
 if (!input) {
-  console.error('No se encontró video.webm. Ejecutá primero: npm run demo:video');
+  console.error('No se encontró video.webm. Ejecutá primero: npm run demo:hero');
   process.exit(1);
 }
+console.log(`Fuente: ${input}`);
 
 const output = 'docs/demo.gif';
 const filter =

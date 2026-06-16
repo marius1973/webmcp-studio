@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('crea un componente desde la paleta y lo deshace', async ({ page }) => {
-  await page.getByRole('button', { name: /Botón/ }).click();
+  await page.getByRole('button', { name: /Añadir Botón/ }).click();
   // El historial registra la acción
   await expect(page.getByText(/1 acciones/)).toBeVisible();
   // Undo desde la toolbar del canvas
@@ -19,22 +19,23 @@ test('crea un componente desde la paleta y lo deshace', async ({ page }) => {
 
 test('el agente (simulador) crea y narra en el Observador', async ({ page }) => {
   await page.getByRole('button', { name: 'create_component(button)' }).click();
-  // La consola Observador muestra el paso narrado con origen agente
-  await expect(page.getByText('create_component')).toBeVisible();
-  await expect(page.getByText(/porque/)).toBeVisible();
+  const observerPanel = page.locator('#panel-observer');
+  await expect(observerPanel.getByText('create_component')).toBeVisible();
+  await expect(observerPanel.getByText(/porque/)).toBeVisible();
 });
 
 test('las tools cambian al navegar entre editor y docs', async ({ page }) => {
-  // En el editor están las tools de edición
-  await expect(page.getByText('create_component', { exact: false }).first()).toBeVisible();
+  const toolPanel = page.locator('app-tool-panel');
+  await expect(toolPanel.getByText('create_component', { exact: false }).first()).toBeVisible();
   await page.getByRole('link', { name: 'Docs' }).click();
-  // En docs aparecen otras tools (auto-cleanup)
-  await expect(page.getByText('search_docs')).toBeVisible();
+  await expect(toolPanel.getByText('search_docs')).toBeVisible();
 });
 
 test('persiste el proyecto entre recargas', async ({ page }) => {
-  await page.getByRole('button', { name: /Card/ }).click();
+  await page.getByRole('button', { name: /Añadir Card/ }).click();
   await expect(page.locator('app-component-tree .count')).toHaveText('2');
+  // Autosave debounced (400 ms en ProjectStore)
+  await page.waitForTimeout(500);
   await page.reload();
   await page.waitForURL(/\/project\//);
   await expect(page.locator('app-component-tree .count')).toHaveText('2');

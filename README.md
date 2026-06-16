@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Demo del Studio: edición manual, agente, Observador, multiproyecto y export Angular ZIP" width="960" />
+  <img src="docs/demo.gif" alt="WebMCP Studio: 4 paneles, paleta y drag & drop, undo, simulador de agente (create_component) y narración en el Observador" width="960" />
 </p>
 
 IDE visual para agentes de IA sobre **WebMCP** (Angular v22). La IA crea, lee y modifica componentes en tiempo real; cada mutación del editor es una **tool WebMCP** o un **Command** con undo/redo.
@@ -132,8 +132,10 @@ src/app/
 npm test              # unit (Vitest) — 44 tests
 npm run test:watch    # Vitest en modo watch
 npm run test:e2e      # e2e (Playwright)
-npm run demo:video    # grabación del recorrido demo
-npm run demo:gif      # convierte el video a docs/demo.gif (para el README)
+npm run demo:hero     # GIF hero del README (~18 s)
+npm run demo:gif      # convierte el video hero a docs/demo.gif
+npm run demo:readme   # hero + gif en un paso
+npm run demo:video    # recorrido completo (DEMO.md, escenas 0–8)
 ```
 
 Cobertura unitaria: store del árbol, Commands, CommandBus, tools de edición, validación/import, observador, clonado del árbol y persistencia del último proyecto.
