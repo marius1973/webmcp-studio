@@ -42,7 +42,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes('ENOENT')) {
-      console.error(`No se encontró ${input}. Ejecutá primero: npm run demo:gif`);
+      console.error(`No se encontró ${input}. Ejecuta primero: npm run demo:gif`);
     } else {
       console.error(msg);
     }

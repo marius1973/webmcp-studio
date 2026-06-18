@@ -33,8 +33,8 @@ async function collectVideos(dir) {
 
 const input = pickVideo(await collectVideos('test-results'), prefer);
 if (!input) {
-  const hint = prefer === 'hero' ? 'npm run demo:hero' : `npm run demo:video (o pasá otro prefijo: node scripts/demo-gif.mjs <prefijo>)`;
-  console.error(`No se encontró video.webm para "${prefer}". Ejecutá primero: ${hint}`);
+  const hint = prefer === 'hero' ? 'npm run demo:hero' : `npm run demo:video (o pasa otro prefijo: node scripts/demo-gif.mjs <prefijo>)`;
+  console.error(`No se encontró video.webm para "${prefer}". Ejecuta primero: ${hint}`);
   process.exit(1);
 }
 console.log(`Fuente: ${input}`);

@@ -1,6 +1,7 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';
 import { AppShell } from './app/shell/app-shell';
+import { registerStudioServiceWorker } from './app/core/pwa/register-sw';
 
 type WebMcpMode = 'native' | 'polyfill' | 'unavailable';
 
@@ -26,6 +27,7 @@ async function resolveWebMcp(): Promise<WebMcpMode> {
 
 async function bootstrap(): Promise<void> {
   (globalThis as { __WEBMCP_MODE?: WebMcpMode }).__WEBMCP_MODE = await resolveWebMcp();
+  registerStudioServiceWorker();
   await bootstrapApplication(AppShell, appConfig);
 }
 

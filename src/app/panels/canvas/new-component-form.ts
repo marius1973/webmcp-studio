@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { form, required, FormField } from '@angular/forms/signals';
 import { ComponentTreeStore } from '../../core/state/component-tree.store';
-import { ComponentKind } from '../../core/state/component-tree.types';
+import { ComponentKind, COMPONENT_KINDS } from '../../core/state/component-tree.types';
 import { CommandBus } from '../../core/commands/command-bus';
 import { createComponent, updateNode } from '../../core/commands/tree-commands';
 import { ToolRegistryStore } from '../../core/state/tool-registry.store';
@@ -31,11 +31,9 @@ const TOOL_NAME = 'new_component_via_form';
       <span class="title">Signal Form → tool <code>{{ toolName }}</code></span>
       <div class="row">
         <select [formField]="ncForm.kind">
-          <option value="container">container</option>
-          <option value="card">card</option>
-          <option value="button">button</option>
-          <option value="text">text</option>
-          <option value="input">input</option>
+          @for (k of kinds; track k) {
+            <option [value]="k">{{ k }}</option>
+          }
         </select>
         <input [formField]="ncForm.label" placeholder="label" />
         <input [formField]="ncForm.parentId" placeholder="parentId" />
@@ -61,6 +59,7 @@ export class NewComponentForm {
   private readonly log = inject(AgentLogStore);
   private readonly observer = inject(ObserverStore);
   protected readonly toolName = TOOL_NAME;
+  protected readonly kinds = COMPONENT_KINDS;
 
   protected readonly ncModel = signal<NewComponentModel>({
     kind: 'button',
@@ -106,7 +105,7 @@ export class NewComponentForm {
   }
 
   private create(value: NewComponentModel, origin: ToolOrigin): void {
-    const allowed: ComponentKind[] = ['container', 'card', 'button', 'text', 'input'];
+    const allowed: ComponentKind[] = COMPONENT_KINDS;
     const kind: ComponentKind = (allowed as string[]).includes(value.kind) ? (value.kind as ComponentKind) : 'container';
     const parent = value.parentId && this.tree.node(value.parentId) ? value.parentId : this.tree.rootId();
     this.bus.dispatch(createComponent(parent, kind), origin, { skipObserver: true });

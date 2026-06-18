@@ -3,6 +3,7 @@ import { Injector, runInInjectionContext } from '@angular/core';
 import { CommandBus } from './command-bus';
 import { ComponentTreeStore } from '../state/component-tree.store';
 import { ObserverStore } from '../state/observer.store';
+import { TelemetryStore } from '../state/telemetry.store';
 import { createComponent } from './tree-commands';
 
 describe('CommandBus (undo/redo)', () => {
@@ -13,10 +14,12 @@ describe('CommandBus (undo/redo)', () => {
   beforeEach(() => {
     tree = new ComponentTreeStore();
     observer = new ObserverStore();
+    const telemetry = { enabled: () => false, record: () => {} };
     const injector = Injector.create({
       providers: [
         { provide: ComponentTreeStore, useValue: tree },
         { provide: ObserverStore, useValue: observer },
+        { provide: TelemetryStore, useValue: telemetry },
       ],
     });
     bus = runInInjectionContext(injector, () => new CommandBus());
@@ -61,5 +64,36 @@ describe('CommandBus (undo/redo)', () => {
     observer.toggle();
     bus.dispatch(createComponent('root', 'button'));
     expect(observer.count()).toBe(0);
+  });
+
+  it('dispatchBatch agrupa varios pasos en un solo undo', () => {
+    bus.dispatchBatch(
+      [createComponent('root', 'button'), createComponent('root', 'text')],
+      'agent',
+    );
+    expect(tree.childrenOf('root').length).toBe(2);
+    expect(bus.past().length).toBe(1);
+    bus.undo();
+    expect(tree.childrenOf('root').length).toBe(0);
+  });
+
+  it('dispatchBatch revierte si un paso falla', () => {
+    expect(() =>
+      bus.dispatchBatch(
+        [
+          createComponent('root', 'button'),
+          {
+            type: 'update',
+            label: 'falla',
+            run: () => {
+              throw new Error('boom');
+            },
+          },
+        ],
+        'agent',
+      ),
+    ).toThrow('boom');
+    expect(tree.childrenOf('root').length).toBe(0);
+    expect(bus.past().length).toBe(0);
   });
 });

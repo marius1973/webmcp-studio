@@ -1,6 +1,15 @@
 import { ComponentKind, ComponentNode, TreeState } from '../state/component-tree.types';
 
-const KINDS: ComponentKind[] = ['container', 'card', 'button', 'text', 'input'];
+const KINDS: ComponentKind[] = [
+  'container',
+  'card',
+  'button',
+  'text',
+  'input',
+  'link',
+  'divider',
+  'image',
+];
 const MAX_NODES = 500;
 
 export type TreeValidationResult =

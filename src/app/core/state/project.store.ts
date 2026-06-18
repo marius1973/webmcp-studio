@@ -8,6 +8,7 @@ import { parseImportTree, previewImportJson, ImportPreview } from './project-imp
 import { clearLastProjectId, persistLastProjectId, readLastProjectId } from './project-last';
 import { DEFAULT_PROJECT_ID } from './project.constants';
 import { resolveEntryProjectId } from './project-entry';
+import { templateById } from './project-templates';
 
 export type { ImportPreview } from './project-import';
 
@@ -102,13 +103,15 @@ export class ProjectStore {
     }
   }
 
-  async createProject(name?: string): Promise<string> {
+  async createProject(name?: string, templateId = 'blank'): Promise<string> {
     const base = (name ?? 'proyecto').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'proyecto';
     const id = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    const tpl = templateById(templateId);
+    const tree = tpl ? tpl.tree() : createInitialTreeState();
     try {
-      await this.persistence.save({ id, name: name ?? deriveName(id), tree: createInitialTreeState(), updatedAt: Date.now() });
+      await this.persistence.save({ id, name: name ?? deriveName(id), tree, updatedAt: Date.now() });
       await this.refresh();
-      this.status.set(`Proyecto "${name ?? deriveName(id)}" creado`);
+      this.status.set(`Proyecto "${name ?? deriveName(id)}" creado${tpl && tpl.id !== 'blank' ? ` (${tpl.label})` : ''}`);
       return id;
     } catch (e) {
       this.setError(e, 'crear proyecto');

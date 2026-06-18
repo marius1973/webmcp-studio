@@ -1,17 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
+import { addFromPalette, createBlankProject, openAgentStrip } from './ui-helpers';
 
 /**
- * GIF hero del README (~18 s): 4 paneles, edición manual, drag & drop, undo, agente
- * simulado y narración en el Observador.
- *
- *   npm run demo:hero
- *   npm run demo:gif
+ * GIF hero del README (~18 s): 4 paneles, edición manual, drag & drop, undo, playbook,
+ * replay en el Observador y Preview.
  */
 const PACE = 800;
 
 test.describe.configure({ timeout: 90_000 });
 
-/** Arrastra un nodo por el handle ⠿ hacia otra fila del árbol (CDK drag-drop). */
 async function dragNodeTo(page: Page, sourceLabel: string, targetLabel: string) {
   const handle = page
     .locator('.node-wrap')
@@ -36,7 +33,6 @@ test('flujo real del Studio (hero README)', async ({ page }) => {
   const beat = () => page.waitForTimeout(PACE);
   const observer = page.locator('#panel-observer');
 
-  // ── 4 paneles visibles ─────────────────────────────────────────────────────
   await page.goto('/');
   await page.waitForURL(/\/project\//);
   await expect(page.locator('app-component-tree')).toBeVisible();
@@ -46,48 +42,39 @@ test('flujo real del Studio (hero README)', async ({ page }) => {
   await beat();
   await beat();
 
-  // ── Nuevo proyecto (lienzo limpio) ─────────────────────────────────────────
-  await page.getByRole('button', { name: /Nuevo/ }).click();
-  await page.waitForURL(/\/project\//);
+  await createBlankProject(page);
   await beat();
 
-  // ── Paleta: Card → Botón → Texto ───────────────────────────────────────────
-  await page.getByRole('button', { name: /Añadir Card/ }).click();
+  await addFromPalette(page, 'Card');
   await beat();
-  await page.getByRole('button', { name: /Añadir Botón/ }).click();
+  await addFromPalette(page, 'Botón');
   await beat();
   await page.locator('.row.root').click();
-  await page.getByRole('button', { name: /Añadir Texto/ }).click();
+  await addFromPalette(page, 'Texto');
   await beat();
 
-  // ── Drag & drop: reparentar Texto dentro de la Card ────────────────────────
   await dragNodeTo(page, 'Texto', 'Card');
   await beat();
   await expect(observer.locator('.step').filter({ hasText: 'move_component' }).first()).toBeVisible();
   await beat();
 
-  // ── Undo (revierte el drag) ────────────────────────────────────────────────
-  await page.getByRole('button', { name: /Undo/ }).first().click();
+  await page.getByRole('button', { name: /Undo/ }).click();
   await beat();
 
-  // ── Simulador de agente: create_component ──────────────────────────────────
-  await page.locator('.row').filter({ hasText: 'Card' }).first().click();
-  await page.getByRole('button', { name: 'create_component(button)' }).click();
+  await openAgentStrip(page);
+  await page.getByRole('button', { name: 'Landing analytics' }).click();
   await beat();
-  await page.locator('.row.root').click();
-  await page.getByRole('button', { name: 'create_component(card)' }).click();
   await beat();
 
-  // ── Observador: narración 🤖 con rationale ─────────────────────────────────
   await page.getByRole('tab', { name: /Observador/ }).click();
-  await expect(observer.getByText('create_component').first()).toBeVisible();
+  await expect(observer.locator('.step').filter({ hasText: 'run_playbook' }).first()).toBeVisible();
   await expect(observer.locator('.step.agent').filter({ hasText: '🤖' }).first()).toBeVisible();
   await expect(observer.getByText(/porque/).first()).toBeVisible();
+  await observer.locator('.step').filter({ hasText: 'run_playbook' }).first().click();
+  await beat();
   await observer.scrollIntoViewIfNeeded();
   await beat();
-  await beat();
 
-  // ── Preview: UI renderizada ────────────────────────────────────────────────
   await page.getByRole('button', { name: 'Preview' }).click();
   await expect(page.locator('app-node-renderer')).toBeVisible();
   await beat();

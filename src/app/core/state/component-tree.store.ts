@@ -33,6 +33,8 @@ export class ComponentTreeStore {
 
   readonly rootId = computed(() => this._state().rootId);
   readonly selectedId = signal<string | null>('root');
+  /** Nodos resaltados desde el Observador (replay). */
+  readonly highlightedIds = signal<Set<string>>(new Set());
 
   /** Todos los ids: cada nodo puede ser destino de drop. */
   readonly allNodeIds = computed(() => Object.keys(this._state().nodes));
@@ -65,6 +67,18 @@ export class ComponentTreeStore {
 
   select(id: string | null): void {
     this.selectedId.set(id);
+  }
+
+  setHighlighted(ids: string[]): void {
+    this.highlightedIds.set(new Set(ids));
+  }
+
+  clearHighlight(): void {
+    this.highlightedIds.set(new Set());
+  }
+
+  isHighlighted(id: string): boolean {
+    return this.highlightedIds().has(id);
   }
 
   /** ¿`maybeAncestor` es ancestro (o igual) de `id`? Evita ciclos en move. */

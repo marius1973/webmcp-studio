@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { ComponentTreeStore } from '../state/component-tree.store';
-import { ComponentKind } from '../state/component-tree.types';
+import { ComponentKind, COMPONENT_KINDS } from '../state/component-tree.types';
 import { AgentLogStore } from '../state/agent-log.store';
 import { ObserverStore } from '../state/observer.store';
 import { ToolExecuteResult, ToolOrigin } from './webmcp.types';
@@ -15,8 +15,14 @@ import { serializeTree } from './tree-serialize';
 import { ProjectExportService } from '../export/project-export.service';
 import { generateAngularProject, summarizeExport } from '../export/angular-project-generator';
 import { ProjectStore } from '../state/project.store';
-
-const KINDS: ComponentKind[] = ['container', 'card', 'button', 'text', 'input'];
+import { validateTreeState } from './tree-validate';
+import { playbookById, PLAYBOOKS } from '../playbooks/playbooks';
+import { stepsToCommands } from '../playbooks/playbook-executor';
+import { explainSelection, formatSuggestions, suggestNextSteps } from './tree-advisor';
+import { AgentConsentStore } from '../state/agent-consent.store';
+import { treeSchemaAsJson } from '../export/tree-schema';
+import { TelemetryStore } from '../state/telemetry.store';
+import { downloadBlob } from '../export/project-zip';
 
 /**
  * Lógica detrás de las tools de edición.
@@ -32,6 +38,8 @@ export class EditingToolsService {
   private readonly observer = inject(ObserverStore);
   private readonly exporter = inject(ProjectExportService);
   private readonly projects = inject(ProjectStore);
+  private readonly consent = inject(AgentConsentStore);
+  private readonly telemetry = inject(TelemetryStore);
 
   createComponent(kind: string, parentId?: string, rationale = ''): ToolExecuteResult {
     const k = this.asKind(kind);
@@ -49,10 +57,16 @@ export class EditingToolsService {
     return this.emit('update_component', { id, label, props }, `Actualizado ${id}`, 'ok', rationale, [id]);
   }
 
-  deleteComponent(id: string, rationale = ''): ToolExecuteResult {
+  async deleteComponent(id: string, rationale = ''): Promise<ToolExecuteResult> {
     const node = this.tree.node(id);
     if (!node) return this.emit('delete_component', { id }, `No existe el nodo ${id}`, 'error', rationale, []);
     if (node.parentId === null) return this.emit('delete_component', { id }, 'No se puede borrar la raíz', 'error', rationale, []);
+    const ok = await this.consent.request(
+      'delete_component',
+      `Borrar ${node.kind} "${node.label}" (${id}) y su subárbol`,
+      { id },
+    );
+    if (!ok) return this.emit('delete_component', { id }, 'Rechazado por el usuario', 'error', rationale, []);
     this.bus.dispatch(deleteComponent(id), 'agent');
     return this.emit('delete_component', { id }, `Borrado ${id}`, 'ok', rationale, [id]);
   }
@@ -74,7 +88,7 @@ export class EditingToolsService {
   }
 
   listTypes(rationale = ''): ToolExecuteResult {
-    return this.emit('list_component_types', {}, KINDS.join(', '), 'ok', rationale, []);
+    return this.emit('list_component_types', {}, COMPONENT_KINDS.join(', '), 'ok', rationale, []);
   }
 
   undo(rationale = ''): ToolExecuteResult {
@@ -107,8 +121,116 @@ export class EditingToolsService {
     }
   }
 
+  listPlaybooks(rationale = ''): ToolExecuteResult {
+    const text = PLAYBOOKS.map((p) => `${p.id}: ${p.label}`).join('\n');
+    return this.emit('list_playbooks', {}, text, 'ok', rationale, []);
+  }
+
+  runPlaybook(playbookId: string, rationale = ''): ToolExecuteResult {
+    const pb = playbookById(playbookId);
+    if (!pb) {
+      return this.emit('run_playbook', { playbookId }, `Playbook desconocido: ${playbookId}`, 'error', rationale, []);
+    }
+    try {
+      const commands = stepsToCommands(pb.steps, this.tree);
+      const why = rationale.trim() || pb.rationale;
+      this.bus.dispatchBatch(commands, 'agent', {
+        historyLabel: pb.label,
+        action: 'run_playbook',
+        what: `Playbook: ${pb.label}`,
+        rationale: why,
+      });
+      return this.emit(
+        'run_playbook',
+        { playbookId },
+        `Playbook "${pb.label}" ejecutado (${commands.length} pasos)`,
+        'ok',
+        why,
+        [],
+        'agent',
+        true,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al ejecutar playbook';
+      return this.emit('run_playbook', { playbookId }, msg, 'error', rationale, []);
+    }
+  }
+
+  explainSelection(nodeId?: string, rationale = ''): ToolExecuteResult {
+    const id = nodeId && this.tree.node(nodeId) ? nodeId : this.tree.selectedId();
+    const info = explainSelection(this.tree.state(), id);
+    if (!info) return this.emit('explain_selection', { nodeId: id }, 'Nodo no encontrado', 'error', rationale, []);
+    const text = `${info.summary}\nparent: ${info.parentId ?? '—'}\nhijos: ${info.childCount}`;
+    return this.emit('explain_selection', { nodeId: info.id }, text, 'ok', rationale, [info.id]);
+  }
+
+  suggestNext(nodeId?: string, rationale = ''): ToolExecuteResult {
+    const id = nodeId && this.tree.node(nodeId) ? nodeId : this.tree.selectedId();
+    const suggestions = suggestNextSteps(this.tree.state(), id);
+    const text = formatSuggestions(suggestions);
+    return this.emit('suggest_next', { nodeId: id }, text, 'ok', rationale, id ? [id] : []);
+  }
+
+  async applyPatch(patch: unknown, rationale = ''): Promise<ToolExecuteResult> {
+    const validated = validateTreeState(patch);
+    if (!validated.ok) {
+      return this.emit('apply_patch', {}, validated.error, 'error', rationale, []);
+    }
+    const state = validated.state;
+    const ok = await this.consent.request(
+      'apply_patch',
+      `Reemplazar el árbol completo (${Object.keys(state.nodes).length} nodos)`,
+      { nodeCount: Object.keys(state.nodes).length },
+    );
+    if (!ok) return this.emit('apply_patch', {}, 'Rechazado por el usuario', 'error', rationale, []);
+    try {
+      this.bus.dispatchBatch(
+        [
+          {
+            type: 'update',
+            label: 'Aplicar parche de árbol',
+            run: (t) => {
+              t.restore(state);
+              t.select(state.rootId);
+            },
+          },
+        ],
+        'agent',
+        {
+          historyLabel: 'apply_patch',
+          action: 'apply_patch',
+          what: `Árbol reemplazado (${Object.keys(state.nodes).length} nodos)`,
+          rationale: rationale.trim() || 'El agente aplicó un parche completo del árbol.',
+        },
+      );
+      return this.emit(
+        'apply_patch',
+        {},
+        `Parche aplicado (${Object.keys(state.nodes).length} nodos)`,
+        'ok',
+        rationale,
+        [state.rootId],
+        'agent',
+        true,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al aplicar parche';
+      return this.emit('apply_patch', {}, msg, 'error', rationale, []);
+    }
+  }
+
+  exportSchema(download = false, rationale = ''): ToolExecuteResult {
+    const text = treeSchemaAsJson(this.tree.state());
+    if (download) {
+      const blob = new Blob([text], { type: 'application/json' });
+      downloadBlob(blob, 'tree-schema.json');
+      this.telemetry.record('export', 'export_schema');
+    }
+    return this.emit('export_schema', { download }, text, 'ok', rationale, []);
+  }
+
   private asKind(kind: string): ComponentKind | null {
-    return (KINDS as string[]).includes(kind) ? (kind as ComponentKind) : null;
+    return (COMPONENT_KINDS as string[]).includes(kind) ? (kind as ComponentKind) : null;
   }
 
   private emit(
@@ -119,19 +241,26 @@ export class EditingToolsService {
     rationale: string,
     affected: string[],
     origin: ToolOrigin = 'agent',
+    skipNarrate = false,
   ): ToolExecuteResult {
     const at = Date.now();
     const isError = status === 'error';
     this.log.record({ toolName, args, result, status, origin, durationMs: 0, at });
-    this.observer.narrate({
-      action: toolName,
-      what: result,
-      rationale: rationale.trim() || 'El agente no explicó el motivo.',
-      origin,
-      affected: affected.filter(Boolean),
-      status,
-      at,
-    });
+    if (!isError && origin === 'agent') {
+      const t = toolName === 'run_playbook' ? 'playbook' : 'tool_invoke';
+      this.telemetry.record(t, toolName);
+    }
+    if (!skipNarrate) {
+      this.observer.narrate({
+        action: toolName,
+        what: result,
+        rationale: rationale.trim() || 'El agente no explicó el motivo.',
+        origin,
+        affected: affected.filter(Boolean),
+        status,
+        at,
+      });
+    }
     return { text: result, isError };
   }
 }

@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgentLogStore } from '../../core/state/agent-log.store';
-import { ObserverStore } from '../../core/state/observer.store';
-import { CommandBus } from '../../core/commands/command-bus';
+import { ObserverStore, ObserverEvent } from '../../core/state/observer.store';
+import { ComponentTreeStore } from '../../core/state/component-tree.store';
 import { StudioToolsService } from '../../core/webmcp/studio-tools.service';
 
 type ConsoleView = 'calls' | 'observer';
@@ -44,8 +44,6 @@ type ConsoleView = 'calls' | 'observer';
             <input type="checkbox" [checked]="observer.enabled()" (change)="observer.toggle()" />
             Modo Observador
           </label>
-          <button (click)="bus.undo()" [disabled]="!bus.canUndo()" title="Deshacer (incluye acciones del agente)">↶ Undo</button>
-          <button (click)="bus.redo()" [disabled]="!bus.canRedo()">↷ Redo</button>
           <button class="ghost" (click)="observer.clear()">limpiar</button>
         </div>
       } @else {
@@ -62,7 +60,14 @@ type ConsoleView = 'calls' | 'observer';
     @if (view() === 'observer') {
       <div class="timeline" role="tabpanel" id="panel-observer" aria-labelledby="tab-observer">
         @for (e of reversedEvents(); track e.at) {
-          <div class="step" [class.agent]="e.origin === 'agent'" [class.err]="e.status === 'error'">
+          <button
+            type="button"
+            class="step"
+            [class.agent]="e.origin === 'agent'"
+            [class.err]="e.status === 'error'"
+            (click)="replay(e)"
+            title="Clic para resaltar nodos afectados"
+          >
             <span class="who">{{ e.origin === 'agent' ? '🤖' : '🙂' }}</span>
             <div class="body">
               <div class="line"><code class="action">{{ e.action }}</code> <span class="what">{{ e.what }}</span></div>
@@ -70,9 +75,9 @@ type ConsoleView = 'calls' | 'observer';
               @if (e.affected.length) { <div class="affected">nodos: {{ e.affected.join(', ') }}</div> }
             </div>
             <span class="time">{{ fmt(e.at) }}</span>
-          </div>
+          </button>
         } @empty {
-          <div class="muted">Todavía no hay pasos. Creá componentes en el editor o invocá tools desde un agente.</div>
+          <div class="muted">Todavía no hay pasos. Crea componentes en el editor o invoca tools desde un agente.</div>
         }
       </div>
     } @else {
@@ -107,7 +112,7 @@ type ConsoleView = 'calls' | 'observer';
     button.ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
     input { background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:.2rem .4rem; color:var(--fg); font-size:.75rem; width:6rem; }
     .timeline, .log { margin-top:.6rem; overflow:auto; display:flex; flex-direction:column; gap:.35rem; }
-    .step { display:flex; gap:.5rem; padding:.35rem .5rem; border-radius:8px; background:var(--surface-2); border-left:3px solid var(--border); }
+    .step { display:flex; gap:.5rem; padding:.35rem .5rem; border-radius:8px; background:var(--surface-2); border-left:3px solid var(--border); width:100%; text-align:left; cursor:pointer; border:0; border-left:3px solid var(--border); color:inherit; font:inherit; }
     .step.agent { border-left-color:var(--accent); }
     .step.err { border-left-color:#c0455f; }
     .who { font-size:1rem; }
@@ -129,7 +134,7 @@ type ConsoleView = 'calls' | 'observer';
 export class AgentConsole {
   protected readonly log = inject(AgentLogStore);
   protected readonly observer = inject(ObserverStore);
-  protected readonly bus = inject(CommandBus);
+  protected readonly tree = inject(ComponentTreeStore);
   protected readonly tools = inject(StudioToolsService);
 
   protected readonly view = signal<ConsoleView>('observer');
@@ -147,5 +152,14 @@ export class AgentConsole {
       return JSON.stringify(args);
     }
     return '';
+  }
+
+  protected replay(e: ObserverEvent): void {
+    if (e.affected.length) {
+      this.tree.setHighlighted(e.affected);
+      this.tree.select(e.affected[0]!);
+    } else {
+      this.tree.clearHighlight();
+    }
   }
 }

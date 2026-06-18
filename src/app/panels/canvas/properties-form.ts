@@ -24,6 +24,13 @@ interface PropsModel {
   text: string;
   placeholder: string;
   variant: string;
+  direction: string;
+  gap: string;
+  align: string;
+  textSize: string;
+  href: string;
+  src: string;
+  alt: string;
 }
 
 const TOOL_NAME = 'update_component_via_form';
@@ -61,6 +68,38 @@ const TOOL_NAME = 'update_component_via_form';
             <label for="prop-text">text</label>
             <input id="prop-text" [formField]="pform.text" />
           </div>
+          <div class="field">
+            <label for="prop-textSize">textSize</label>
+            <select id="prop-textSize" [formField]="pform.textSize">
+              <option value="body">body</option>
+              <option value="hero">hero</option>
+              <option value="caption">caption</option>
+            </select>
+          </div>
+        }
+        @if (kind === 'container' || kind === 'card') {
+          <div class="field">
+            <label for="prop-direction">direction</label>
+            <select id="prop-direction" [formField]="pform.direction">
+              <option value="column">column</option>
+              <option value="row">row</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="prop-gap">gap</label>
+            <select id="prop-gap" [formField]="pform.gap">
+              <option value="sm">sm</option>
+              <option value="md">md</option>
+              <option value="lg">lg</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="prop-align">align</label>
+            <select id="prop-align" [formField]="pform.align">
+              <option value="start">start</option>
+              <option value="center">center</option>
+            </select>
+          </div>
         }
         @if (kind === 'input') {
           <div class="field">
@@ -68,12 +107,32 @@ const TOOL_NAME = 'update_component_via_form';
             <input id="prop-placeholder" [formField]="pform.placeholder" />
           </div>
         }
+        @if (kind === 'link') {
+          <div class="field">
+            <label for="prop-href">href</label>
+            <input id="prop-href" [formField]="pform.href" />
+          </div>
+          <div class="field">
+            <label for="prop-link-text">text</label>
+            <input id="prop-link-text" [formField]="pform.text" />
+          </div>
+        }
+        @if (kind === 'image') {
+          <div class="field">
+            <label for="prop-src">src</label>
+            <input id="prop-src" [formField]="pform.src" />
+          </div>
+          <div class="field">
+            <label for="prop-alt">alt</label>
+            <input id="prop-alt" [formField]="pform.alt" />
+          </div>
+        }
 
         <button type="submit">Aplicar</button>
         <span class="live">↳ {{ pform.label().value() }}</span>
       </form>
     } @else {
-      <p class="muted">Seleccioná un nodo para editar sus propiedades.</p>
+      <p class="muted">Selecciona un nodo para editar sus propiedades.</p>
     }
   `,
   styles: [`
@@ -102,6 +161,13 @@ export class PropertiesForm {
     text: '',
     placeholder: '',
     variant: 'primary',
+    direction: 'column',
+    gap: 'md',
+    align: 'start',
+    textSize: 'body',
+    href: '',
+    src: '',
+    alt: '',
   });
 
   protected readonly pform = form(
@@ -159,6 +225,13 @@ export class PropertiesForm {
           text: node?.props['text'] ?? '',
           placeholder: node?.props['placeholder'] ?? '',
           variant: node?.props['variant'] ?? 'primary',
+          direction: node?.props['direction'] ?? 'column',
+          gap: node?.props['gap'] ?? 'md',
+          align: node?.props['align'] ?? 'start',
+          textSize: node?.props['textSize'] ?? 'body',
+          href: node?.props['href'] ?? '',
+          src: node?.props['src'] ?? '',
+          alt: node?.props['alt'] ?? '',
         });
       });
     });
@@ -175,8 +248,24 @@ export class PropertiesForm {
     const kind = this.tree.node(id)?.kind;
     const props: Record<string, string> = {};
     if (kind === 'button') props['variant'] = m.variant;
-    if (kind === 'text') props['text'] = m.text;
+    if (kind === 'text') {
+      props['text'] = m.text;
+      props['textSize'] = m.textSize;
+    }
     if (kind === 'input') props['placeholder'] = m.placeholder;
+    if (kind === 'container' || kind === 'card') {
+      props['direction'] = m.direction;
+      props['gap'] = m.gap;
+      props['align'] = m.align;
+    }
+    if (kind === 'link') {
+      props['href'] = m.href;
+      props['text'] = m.text;
+    }
+    if (kind === 'image') {
+      props['src'] = m.src;
+      props['alt'] = m.alt;
+    }
     this.bus.dispatch(updateNode(id, m.label, props), origin, {
       skipObserver: origin === 'agent',
       action: TOOL_NAME,

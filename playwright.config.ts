@@ -9,7 +9,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     viewport: { width: 1440, height: 810 },
     // Graba video de cada test (sirve para la demo).
-    video: { mode: 'on', size: { width: 1440, height: 810 } },
+    video: process.env['CI'] ? 'off' : { mode: 'on', size: { width: 1440, height: 810 } },
   },
   webServer: {
     command: 'npm start',

@@ -4,6 +4,7 @@ import { TreeState } from '../state/component-tree.types';
 import { ObserverStore } from '../state/observer.store';
 import { ToolOrigin } from '../webmcp/webmcp.types';
 import { Command, CommandType } from './command';
+import { TelemetryStore } from '../state/telemetry.store';
 
 export interface HistoryEntry {
   type: CommandType;
@@ -63,6 +64,7 @@ function diffAffected(before: TreeState, after: TreeState): string[] {
 export class CommandBus {
   private readonly tree = inject(ComponentTreeStore);
   private readonly observer = inject(ObserverStore);
+  private readonly telemetry = inject(TelemetryStore, { optional: true });
   private readonly _past = signal<HistoryEntry[]>([]);
   private readonly _future = signal<HistoryEntry[]>([]);
 
@@ -96,6 +98,38 @@ export class CommandBus {
     }
   }
 
+  dispatchBatch(
+    commands: Command[],
+    origin: ToolOrigin = 'agent',
+    options?: { historyLabel?: string; action?: string; rationale?: string; what?: string },
+  ): void {
+    if (!commands.length) return;
+    const before = this.tree.snapshot();
+    try {
+      for (const c of commands) c.run(this.tree);
+    } catch (e) {
+      this.tree.restore(before);
+      throw e;
+    }
+    const after = this.tree.snapshot();
+    const at = Date.now();
+    const label = options?.historyLabel ?? `Batch (${commands.length} comandos)`;
+    this._past.update((p) => [...p, { type: 'update', label, origin, before, after, at }]);
+    this._future.set([]);
+
+    if (origin === 'agent') {
+      this.observer.narrate({
+        action: options?.action ?? 'run_playbook',
+        what: options?.what ?? label,
+        rationale: options?.rationale ?? 'El agente ejecutó un playbook de varios pasos.',
+        origin: 'agent',
+        affected: diffAffected(before, after),
+        status: 'ok',
+        at,
+      });
+    }
+  }
+
   undo(options?: { skipObserver?: boolean }): void {
     const past = this._past();
     if (!past.length) return;
@@ -114,6 +148,7 @@ export class CommandBus {
         status: 'ok',
         at: Date.now(),
       });
+      this.telemetry?.record('undo');
     }
   }
 
@@ -141,6 +176,7 @@ export class CommandBus {
         status: 'ok',
         at: Date.now(),
       });
+      this.telemetry?.record('redo');
     }
   }
 }

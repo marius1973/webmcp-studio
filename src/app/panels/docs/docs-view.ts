@@ -13,7 +13,7 @@ import { ProjectStore } from '../../core/state/project.store';
         <p class="back-row"><a class="back" [routerLink]="['/project', pid]">← Volver al editor</a></p>
       }
       <h1>Documentación</h1>
-      <p>Estás fuera del editor. Mirá el <strong>Panel de Herramientas</strong>: las tools de
+      <p>Estás fuera del editor. Observa el <strong>Panel de Herramientas</strong>: las tools de
          edición (<code>create_component</code>, <code>move_component</code>…) desaparecieron y
          aparecieron <code>search_docs</code> y <code>list_sections</code>.</p>
       <p>Eso es <strong>auto-cleanup</strong>: las tools viven en el injector de la ruta y se

@@ -1,8 +1,25 @@
 import { TreeState } from '../state/component-tree.types';
 import { serializeTree, SerializedNode } from '../webmcp/tree-serialize';
+import {
+  buildNodeTemplateLines,
+  sectionClassName,
+  sectionFileBase,
+  sectionSelector,
+  UI_COMPONENT_STYLES,
+  UI_HELPER_METHODS,
+} from './export-ui-templates';
 
 export interface AngularProjectFiles {
   [path: string]: string;
+}
+
+export interface SectionMeta {
+  base: string;
+  className: string;
+  selector: string;
+  path: string;
+  routePath: string;
+  label: string;
 }
 
 export function slugifyProjectName(name: string): string {
@@ -13,8 +30,248 @@ export function slugifyProjectName(name: string): string {
 export function generateAngularProject(tree: TreeState, projectName: string): AngularProjectFiles {
   const slug = slugifyProjectName(projectName);
   const root = serializeTree(tree);
-  const treeJson = JSON.stringify(root, null, 2);
+  const sections = buildSectionMetas(root);
+  const files: AngularProjectFiles = {
+    ...baseProjectFiles(slug, projectName),
+  };
 
+  if (sections.length > 0) {
+    for (const sec of sections) {
+      const node = root.children.find((c) => sectionFileBase(c) === sec.base)!;
+      files[sec.path] = buildSectionComponent(sec, node);
+    }
+    files['src/app/home.component.ts'] = buildHomeComponent(sections);
+    files['src/app/app.routes.ts'] = buildRoutes(sections);
+    files['src/app/app.config.ts'] = buildAppConfig();
+    files['src/app/app.component.ts'] = buildAppShell(projectName, sections);
+    files['README.md'] = buildReadme(projectName, sections);
+  } else {
+    const treeJson = JSON.stringify(root, null, 2);
+    files['src/app/generated-ui.component.ts'] = buildMonolithicUi(treeJson);
+    files['src/app/app.config.ts'] = buildAppConfigMinimal();
+    files['src/app/app.component.ts'] = buildAppWithInlineUi(projectName);
+    files['README.md'] = buildReadme(projectName, []);
+  }
+
+  return files;
+}
+
+function buildSectionMetas(root: SerializedNode): SectionMeta[] {
+  return root.children.map((child) => {
+    const base = sectionFileBase(child);
+    return {
+      base,
+      className: sectionClassName(base),
+      selector: sectionSelector(base),
+      path: `src/app/sections/${base}.component.ts`,
+      routePath: base,
+      label: child.label,
+    };
+  });
+}
+
+function buildSectionComponent(sec: SectionMeta, node: SerializedNode): string {
+  const nodeJson = JSON.stringify(node, null, 2);
+  const branch = buildNodeTemplateLines('node').join('\n      ');
+  return `import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
+
+export interface UiNode {
+  id: string;
+  kind: string;
+  label: string;
+  props: Record<string, string>;
+  children: UiNode[];
+}
+
+/** Sección "${sec.label}" — generada desde WebMCP Studio. */
+@Component({
+  selector: '${sec.selector}',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgTemplateOutlet, NgClass],
+  template: \`
+    <ng-template #branch let-node>
+      ${branch}
+    </ng-template>
+    <ng-container [ngTemplateOutlet]="branch" [ngTemplateOutletContext]="{ $implicit: root }" />
+  \`,
+  styles: [\`${UI_COMPONENT_STYLES}\`],
+})
+export class ${sec.className} {
+  readonly root: UiNode = ${nodeJson};
+${UI_HELPER_METHODS}
+}
+`;
+}
+
+function buildHomeComponent(sections: SectionMeta[]): string {
+  const imports = sections.map((s) => s.className).join(', ');
+  const tags = sections.map((s) => `      <${s.selector} />`).join('\n');
+  return `import { ChangeDetectionStrategy, Component } from '@angular/core';
+${sections.map((s) => `import { ${s.className} } from './sections/${s.base}.component';`).join('\n')}
+
+@Component({
+  selector: 'app-home',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [${imports}],
+  template: \`
+    <div class="home">
+${tags}
+    </div>
+  \`,
+  styles: [\`.home { display: flex; flex-direction: column; gap: 1rem; }\`],
+})
+export class HomeComponent {}
+`;
+}
+
+function buildRoutes(sections: SectionMeta[]): string {
+  const sectionRoutes = sections
+    .map(
+      (s) => `  {
+    path: '${s.routePath}',
+    loadComponent: () => import('./sections/${s.base}.component').then((m) => m.${s.className}),
+    title: '${escapeHtml(s.label)}',
+  },`,
+    )
+    .join('\n');
+  return `import { Routes } from '@angular/router';
+
+export const routes: Routes = [
+  {
+    path: '',
+    loadComponent: () => import('./home.component').then((m) => m.HomeComponent),
+    title: 'Inicio',
+  },
+${sectionRoutes}
+  { path: '**', redirectTo: '' },
+];
+`;
+}
+
+function buildAppConfig(): string {
+  return `import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideZonelessChangeDetection(), provideRouter(routes)],
+};
+`;
+}
+
+function buildAppConfigMinimal(): string {
+  return `import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideZonelessChangeDetection()],
+};
+`;
+}
+
+function buildAppShell(projectName: string, sections: SectionMeta[]): string {
+  const navLinks = sections
+    .map(
+      (s) =>
+        `          <a routerLink="/${s.routePath}" routerLinkActive="active">${escapeHtml(s.label)}</a>`,
+    )
+    .join('\n');
+  return `import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+
+@Component({
+  selector: 'app-root',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  template: \`
+    <main class="app">
+      <header class="app-head">
+        <h1>${escapeHtml(projectName)}</h1>
+        <p class="muted">Generado con WebMCP Studio</p>
+        <nav class="nav">
+          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
+${navLinks}
+        </nav>
+      </header>
+      <router-outlet />
+    </main>
+  \`,
+  styles: [\`
+    .app { padding: 1.5rem; max-width: 52rem; margin: 0 auto; }
+    .app-head h1 { margin: 0 0 .25rem; font-size: 1.35rem; }
+    .muted { margin: 0 0 .75rem; color: var(--muted); font-size: .85rem; }
+    .nav a { font-size: .8rem; color: var(--muted); margin-right: .75rem; text-decoration: none; }
+    .nav a.active { color: var(--accent); font-weight: 600; }
+  \`],
+})
+export class AppComponent {}
+`;
+}
+
+function buildAppWithInlineUi(projectName: string): string {
+  return `import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { GeneratedUiComponent } from './generated-ui.component';
+
+@Component({
+  selector: 'app-root',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [GeneratedUiComponent],
+  template: \`
+    <main class="app">
+      <header class="app-head">
+        <h1>${escapeHtml(projectName)}</h1>
+        <p class="muted">Generado con WebMCP Studio</p>
+      </header>
+      <app-generated-ui />
+    </main>
+  \`,
+  styles: [\`
+    .app { padding: 1.5rem; max-width: 48rem; margin: 0 auto; }
+    .app-head h1 { margin: 0 0 .25rem; font-size: 1.35rem; }
+    .muted { margin: 0 0 1rem; color: var(--muted); font-size: .85rem; }
+  \`],
+})
+export class AppComponent {}
+`;
+}
+
+function buildReadme(projectName: string, sections: SectionMeta[]): string {
+  const sectionList =
+    sections.length > 0
+      ? sections.map((s) => `- \`${s.path}\` — ruta \`/${s.routePath}\` (${s.label})`).join('\n')
+      : '- `src/app/generated-ui.component.ts` — UI monolítica (árbol vacío bajo root)';
+  return `# ${projectName}
+
+Proyecto Angular **standalone** generado desde [WebMCP Studio](https://github.com/marius1973/webmcp-studio).
+
+## Inicio rápido
+
+\`\`\`bash
+npm install
+npm start
+\`\`\`
+
+Abre http://localhost:4200
+
+## Estructura
+
+- \`src/app/app.routes.ts\` — rutas por sección (lazy load)
+- \`src/app/home.component.ts\` — vista principal con todas las secciones
+${sectionList}
+
+Cada sección tiene **estilos propios** en su \`@Component({ styles })\`.
+
+## Build producción
+
+\`\`\`bash
+npm run build
+\`\`\`
+
+Salida en \`dist/\`.
+`;
+}
+
+function baseProjectFiles(slug: string, projectName: string): AngularProjectFiles {
   return {
     'package.json': JSON.stringify(
       {
@@ -27,6 +284,7 @@ export function generateAngularProject(tree: TreeState, projectName: string): An
           '@angular/compiler': '^22.0.0',
           '@angular/core': '^22.0.0',
           '@angular/platform-browser': '^22.0.0',
+          '@angular/router': '^22.0.0',
           rxjs: '~7.8.0',
           tslib: '^2.6.0',
         },
@@ -127,22 +385,7 @@ export function generateAngularProject(tree: TreeState, projectName: string): An
       null,
       2,
     ),
-    '.gitignore': `node_modules/
-dist/
-.angular/
-out-tsc/
-`,
-    'README.md': `# ${projectName}
-
-Proyecto Angular generado desde **WebMCP Studio**.
-
-\`\`\`bash
-npm install
-npm start
-\`\`\`
-
-Abre http://localhost:4200 para ver la UI exportada.
-`,
+    '.gitignore': `node_modules/\ndist/\n.angular/\nout-tsc/\n`,
     'public/.gitkeep': '',
     'src/index.html': `<!doctype html>
 <html lang="es">
@@ -180,43 +423,13 @@ body {
   font-size: 14px;
 }
 `,
-    'src/app/app.config.ts': `import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
-
-export const appConfig: ApplicationConfig = {
-  providers: [provideZonelessChangeDetection()],
-};
-`,
-    'src/app/app.component.ts': `import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { GeneratedUiComponent } from './generated-ui.component';
-
-@Component({
-  selector: 'app-root',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [GeneratedUiComponent],
-  template: \`
-    <main class="app">
-      <header class="app-head">
-        <h1>${escapeHtml(projectName)}</h1>
-        <p class="muted">Generado con WebMCP Studio</p>
-      </header>
-      <app-generated-ui />
-    </main>
-  \`,
-  styles: [\`
-    .app { padding: 1.5rem; max-width: 48rem; margin: 0 auto; }
-    .app-head h1 { margin: 0 0 .25rem; font-size: 1.35rem; }
-    .muted { margin: 0 0 1rem; color: var(--muted); font-size: .85rem; }
-  \`],
-})
-export class AppComponent {}
-`,
-    'src/app/generated-ui.component.ts': buildGeneratedUiComponent(treeJson),
   };
 }
 
-function buildGeneratedUiComponent(treeJson: string): string {
+function buildMonolithicUi(treeJson: string): string {
+  const branch = buildNodeTemplateLines('node').join('\n      ');
   return `import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
 
 export interface UiNode {
   id: string;
@@ -229,73 +442,18 @@ export interface UiNode {
 @Component({
   selector: 'app-generated-ui',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, NgClass],
   template: \`
     <ng-template #branch let-node>
-      @if (node.kind === 'container') {
-        <section class="ui-container">
-          @for (child of node.children; track child.id) {
-            <ng-container [ngTemplateOutlet]="branch" [ngTemplateOutletContext]="{ $implicit: child }" />
-          }
-        </section>
-      } @else if (node.kind === 'card') {
-        <article class="ui-card">
-          <h2>{{ node.label }}</h2>
-          @for (child of node.children; track child.id) {
-            <ng-container [ngTemplateOutlet]="branch" [ngTemplateOutletContext]="{ $implicit: child }" />
-          }
-        </article>
-      } @else if (node.kind === 'button') {
-        <button type="button" class="ui-btn" [attr.data-variant]="node.props['variant'] || 'primary'">
-          {{ node.label }}
-        </button>
-      } @else if (node.kind === 'text') {
-        <p class="ui-text">{{ node.props['text'] || node.label }}</p>
-      } @else if (node.kind === 'input') {
-        <input class="ui-input" [placeholder]="node.props['placeholder'] || node.label" />
-      }
+      ${branch}
     </ng-template>
     <ng-container [ngTemplateOutlet]="branch" [ngTemplateOutletContext]="{ $implicit: root }" />
   \`,
-  styles: [\`
-    .ui-container { display: flex; flex-direction: column; gap: .5rem; margin: .5rem 0; }
-    .ui-card {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1rem;
-      background: var(--surface-1);
-      margin: .5rem 0;
-    }
-    .ui-card h2 { margin: 0 0 .75rem; font-size: 1rem; }
-    .ui-btn {
-      border: 0;
-      border-radius: 8px;
-      padding: .45rem .9rem;
-      font-size: .85rem;
-      cursor: pointer;
-      color: #fff;
-      background: var(--accent);
-    }
-    .ui-btn[data-variant="ghost"] {
-      background: transparent;
-      border: 1px solid var(--accent);
-      color: var(--accent);
-    }
-    .ui-btn[data-variant="danger"] { background: #c0455f; }
-    .ui-text { margin: .35rem 0; font-size: .9rem; }
-    .ui-input {
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: .45rem .7rem;
-      color: var(--fg);
-      font-size: .85rem;
-      min-width: 12rem;
-    }
-  \`],
+  styles: [\`${UI_COMPONENT_STYLES}\`],
 })
 export class GeneratedUiComponent {
   readonly root: UiNode = ${treeJson};
+${UI_HELPER_METHODS}
 }
 `;
 }

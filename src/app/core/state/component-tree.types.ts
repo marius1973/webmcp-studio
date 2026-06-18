@@ -1,6 +1,25 @@
 /** Modelo de datos del árbol de componentes (normalizado por id). */
 
-export type ComponentKind = 'container' | 'card' | 'button' | 'text' | 'input';
+export type ComponentKind =
+  | 'container'
+  | 'card'
+  | 'button'
+  | 'text'
+  | 'input'
+  | 'link'
+  | 'divider'
+  | 'image';
+
+export const COMPONENT_KINDS: ComponentKind[] = [
+  'container',
+  'card',
+  'button',
+  'text',
+  'input',
+  'link',
+  'divider',
+  'image',
+];
 
 export interface ComponentNode {
   id: string;
@@ -22,6 +41,9 @@ export const KIND_LABEL: Record<ComponentKind, string> = {
   button: 'Botón',
   text: 'Texto',
   input: 'Input',
+  link: 'Link',
+  divider: 'Divisor',
+  image: 'Imagen',
 };
 
 export const KIND_ICON: Record<ComponentKind, string> = {
@@ -30,4 +52,7 @@ export const KIND_ICON: Record<ComponentKind, string> = {
   button: '🔘',
   text: '🔤',
   input: '⌨',
+  link: '🔗',
+  divider: '—',
+  image: '🖼',
 };

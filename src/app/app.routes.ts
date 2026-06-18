@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { provideEditingTools } from './core/webmcp/editing-tools';
+import { provideDeclarativeEditingTools } from './core/webmcp/declarative-editing-tools';
 import { provideDocsTools } from './core/webmcp/docs-tools';
 
 export const routes: Routes = [
@@ -11,7 +12,7 @@ export const routes: Routes = [
     path: 'project/:id',
     loadComponent: () => import('./panels/canvas/canvas-home').then((m) => m.CanvasHome),
     // Tools de edición SOLO disponibles dentro del editor (auto-cleanup al salir).
-    providers: [...provideEditingTools()],
+    providers: [...provideEditingTools(), provideDeclarativeEditingTools()],
   },
   {
     path: 'docs',

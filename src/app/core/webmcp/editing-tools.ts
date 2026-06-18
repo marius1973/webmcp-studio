@@ -21,7 +21,7 @@ function bool(v: unknown, fallback = true): boolean {
 }
 
 /** Campo `rationale` que invita al agente a explicar el porqué (Modo Observador). */
-const RATIONALE = { type: 'string', description: 'Por qué realizás esta acción (Modo Observador).' } as const;
+const RATIONALE = { type: 'string', description: 'Por qué realizas esta acción (Modo Observador).' } as const;
 
 const PROPS_SCHEMA = {
   type: 'object',
@@ -80,6 +80,52 @@ export const EXPORT_PROJECT_CODE_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+export const RUN_PLAYBOOK_SCHEMA = {
+  type: 'object',
+  properties: {
+    playbookId: { type: 'string', description: 'ID del playbook (p. ej. landing-analytics, contact-form).' },
+    rationale: RATIONALE,
+  },
+  required: ['playbookId'],
+  additionalProperties: false,
+} as const;
+
+export const APPLY_PATCH_SCHEMA = {
+  type: 'object',
+  properties: {
+    tree: {
+      type: 'object',
+      description: 'TreeState completo (rootId + nodes) que reemplaza el árbol actual.',
+      properties: {
+        rootId: { type: 'string' },
+        nodes: { type: 'object', additionalProperties: { type: 'object' } },
+      },
+      required: ['rootId', 'nodes'],
+    },
+    rationale: RATIONALE,
+  },
+  required: ['tree'],
+  additionalProperties: false,
+} as const;
+
+export const EXPORT_SCHEMA_SCHEMA = {
+  type: 'object',
+  properties: {
+    download: { type: 'boolean', description: 'Si true, descarga tree-schema.json.' },
+    rationale: RATIONALE,
+  },
+  additionalProperties: false,
+} as const;
+
+const NODE_ID_SCHEMA = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', description: 'ID del nodo (por defecto: seleccionado).' },
+    rationale: RATIONALE,
+  },
+  additionalProperties: false,
+} as const;
+
 /** Metadatos mostrados en el Panel de Herramientas (scope de ruta = editor). */
 export const EDITING_TOOL_METAS: McpToolMeta[] = [
   { name: 'create_component', source: 'route', description: 'Crea un componente (kind) bajo un padre.', inputSchema: { ...CREATE_COMPONENT_SCHEMA } },
@@ -95,6 +141,42 @@ export const EDITING_TOOL_METAS: McpToolMeta[] = [
     source: 'route',
     description: 'Genera un proyecto Angular standalone y lo descarga como ZIP.',
     inputSchema: { ...EXPORT_PROJECT_CODE_SCHEMA },
+  },
+  {
+    name: 'list_playbooks',
+    source: 'route',
+    description: 'Lista playbooks predefinidos disponibles para run_playbook.',
+    inputSchema: { ...RATIONALE_ONLY_SCHEMA },
+  },
+  {
+    name: 'run_playbook',
+    source: 'route',
+    description: 'Ejecuta un playbook predefinido en un solo undo.',
+    inputSchema: { ...RUN_PLAYBOOK_SCHEMA },
+  },
+  {
+    name: 'apply_patch',
+    source: 'route',
+    description: 'Reemplaza el árbol completo con un TreeState validado.',
+    inputSchema: { ...APPLY_PATCH_SCHEMA },
+  },
+  {
+    name: 'explain_selection',
+    source: 'route',
+    description: 'Describe el nodo seleccionado (kind, props, hijos).',
+    inputSchema: { ...NODE_ID_SCHEMA },
+  },
+  {
+    name: 'suggest_next',
+    source: 'route',
+    description: 'Sugerencias heurísticas para mejorar el árbol o el nodo actual.',
+    inputSchema: { ...NODE_ID_SCHEMA },
+  },
+  {
+    name: 'export_schema',
+    source: 'route',
+    description: 'Exporta JSON Schema + instancia del árbol actual.',
+    inputSchema: { ...EXPORT_SCHEMA_SCHEMA },
   },
 ];
 
@@ -137,7 +219,7 @@ export function provideEditingTools(): (Provider | EnvironmentProviders)[] {
         name: 'delete_component',
         description: 'Borra un nodo y su subárbol.',
         inputSchema: DELETE_COMPONENT_SCHEMA,
-        execute: (a) => wrap(svc().deleteComponent(str(a['id']), str(a['rationale']))),
+        execute: async (a) => wrap(await svc().deleteComponent(str(a['id']), str(a['rationale']))),
       },
       {
         name: 'move_component',
@@ -181,6 +263,42 @@ export function provideEditingTools(): (Provider | EnvironmentProviders)[] {
               str(a['rationale']),
             ),
           ),
+      },
+      {
+        name: 'list_playbooks',
+        description: 'Lista playbooks predefinidos disponibles para run_playbook.',
+        inputSchema: RATIONALE_ONLY_SCHEMA,
+        execute: (a) => wrap(svc().listPlaybooks(str(a['rationale']))),
+      },
+      {
+        name: 'run_playbook',
+        description: 'Ejecuta un playbook predefinido en un solo undo.',
+        inputSchema: RUN_PLAYBOOK_SCHEMA,
+        execute: (a) => wrap(svc().runPlaybook(str(a['playbookId']), str(a['rationale']))),
+      },
+      {
+        name: 'apply_patch',
+        description: 'Reemplaza el árbol completo con un TreeState validado.',
+        inputSchema: APPLY_PATCH_SCHEMA,
+        execute: async (a) => wrap(await svc().applyPatch(a['tree'], str(a['rationale']))),
+      },
+      {
+        name: 'explain_selection',
+        description: 'Describe el nodo seleccionado (kind, props, hijos).',
+        inputSchema: NODE_ID_SCHEMA,
+        execute: (a) => wrap(svc().explainSelection(str(a['id']) || undefined, str(a['rationale']))),
+      },
+      {
+        name: 'suggest_next',
+        description: 'Sugerencias heurísticas para mejorar el árbol o el nodo actual.',
+        inputSchema: NODE_ID_SCHEMA,
+        execute: (a) => wrap(svc().suggestNext(str(a['id']) || undefined, str(a['rationale']))),
+      },
+      {
+        name: 'export_schema',
+        description: 'Exporta JSON Schema + instancia del árbol actual.',
+        inputSchema: EXPORT_SCHEMA_SCHEMA,
+        execute: (a) => wrap(svc().exportSchema(bool(a['download'], false), str(a['rationale']))),
       },
     ]),
     provideEnvironmentInitializer(() => {

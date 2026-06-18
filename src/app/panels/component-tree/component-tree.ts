@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { ComponentTreeStore } from '../../core/state/component-tree.store';
 import {
   ComponentKind,
+  COMPONENT_KINDS,
   KIND_ICON,
   KIND_LABEL,
 } from '../../core/state/component-tree.types';
@@ -21,16 +22,31 @@ import {
   template: `
     <div class="panel-head"><h2 id="tree-heading">Árbol de componentes <span class="count">{{ tree.nodeCount() }}</span></h2></div>
 
-    <div class="palette" role="toolbar" aria-label="Paleta de componentes">
-      @for (k of kinds; track k) {
-        <button
-          type="button"
-          class="chip"
-          (click)="add(k)"
-          [attr.aria-label]="'Añadir ' + label(k) + ' al nodo seleccionado'"
-        >
-          {{ icon(k) }} {{ label(k) }}
-        </button>
+    <div class="palette">
+      <button
+        type="button"
+        class="add-btn"
+        (click)="togglePalette($event)"
+        aria-haspopup="menu"
+        [attr.aria-expanded]="paletteOpen()"
+      >
+        ＋ Añadir
+      </button>
+      @if (paletteOpen()) {
+        <div class="palette-menu" role="menu" (click)="$event.stopPropagation()">
+          @for (k of kinds; track k) {
+            <button
+              type="button"
+              role="menuitem"
+              class="menu-item"
+              (click)="addKind(k)"
+              [attr.aria-label]="'Añadir ' + label(k) + ' al nodo seleccionado'"
+            >
+              <span class="ico" aria-hidden="true">{{ icon(k) }}</span>
+              <span class="lbl-full">{{ label(k) }}</span>
+            </button>
+          }
+        </div>
       }
     </div>
 
@@ -45,6 +61,7 @@ import {
         class="row root"
         role="treeitem"
         [attr.aria-selected]="tree.selectedId() === tree.rootId()"
+        [class.hl]="tree.isHighlighted(tree.rootId())"
         [attr.aria-level]="1"
         [attr.aria-setsize]="1"
         [attr.aria-posinset]="1"
@@ -71,6 +88,7 @@ import {
               class="row"
               role="treeitem"
               [attr.aria-selected]="tree.selectedId() === child.id"
+              [class.hl]="tree.isHighlighted(child.id)"
               [attr.aria-level]="level + 1"
               [attr.aria-setsize]="tree.childrenOf(id).length"
               [attr.aria-posinset]="i + 1"
@@ -92,21 +110,26 @@ import {
       </div>
     </ng-template>
 
-    <p class="hint">Arrastrá por ⠿ para reordenar o reparentar. Flechas ↑↓ para navegar, Supr para borrar.</p>
+    <p class="hint">Arrastra por ⠿ para reordenar o reparentar. Flechas ↑↓ para navegar, Supr para borrar.</p>
   `,
   styles: [`
     :host { display:flex; flex-direction:column; height:100%; }
     .panel-head h2 { margin:0; font-size:.85rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
     .count { background:var(--accent); color:#fff; border-radius:999px; padding:0 .4rem; font-size:.7rem; }
-    .palette { display:flex; flex-wrap:wrap; gap:.3rem; margin:.6rem 0; }
-    .chip { background:var(--surface-2); border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:.2rem .45rem; font-size:.72rem; cursor:pointer; }
-    .chip:hover { border-color:var(--accent); }
+    .palette { position:relative; margin:.6rem 0; }
+    .add-btn { width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:.35rem .5rem; font-size:.78rem; cursor:pointer; text-align:left; }
+    .add-btn:hover { border-color:var(--accent); }
+    .palette-menu { position:absolute; top:100%; left:0; right:0; z-index:20; margin-top:.25rem; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:.25rem; box-shadow:0 8px 24px rgba(0,0,0,.35); max-height:14rem; overflow:auto; }
+    .menu-item { display:flex; align-items:center; gap:.4rem; width:100%; background:transparent; border:0; color:var(--fg); border-radius:6px; padding:.35rem .45rem; font-size:.78rem; cursor:pointer; text-align:left; }
+    .menu-item:hover { background:var(--surface-1); }
+    .ico { width:1.1rem; text-align:center; flex-shrink:0; }
     .tree { overflow:auto; flex:1; min-height:0; outline:none; }
     .tree:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius:6px; }
     .children { margin-left:.9rem; border-left:1px dashed var(--border); padding-left:.3rem; min-height:6px; }
     .row { display:flex; align-items:center; gap:.35rem; padding:.2rem .3rem; border-radius:6px; cursor:pointer; font-size:.82rem; }
     .row:hover { background:var(--surface-2); }
     .row[aria-selected="true"] { background:var(--accent); color:#fff; }
+    .row.hl { box-shadow: inset 0 0 0 2px #f0c040; }
     .row.root { font-weight:600; }
     .handle { cursor:grab; color:var(--muted); font-size:.8rem; }
     .row[aria-selected="true"] .handle { color:#fff; }
@@ -121,7 +144,18 @@ import {
 export class ComponentTree {
   protected readonly tree = inject(ComponentTreeStore);
   private readonly bus = inject(CommandBus);
-  protected readonly kinds: ComponentKind[] = ['container', 'card', 'button', 'text', 'input'];
+  protected readonly kinds: ComponentKind[] = COMPONENT_KINDS;
+  protected readonly paletteOpen = signal(false);
+
+  @HostListener('document:click')
+  protected closePalette(): void {
+    this.paletteOpen.set(false);
+  }
+
+  protected togglePalette(event: Event): void {
+    event.stopPropagation();
+    this.paletteOpen.update((v) => !v);
+  }
 
   protected icon(k: ComponentKind): string {
     return KIND_ICON[k];
@@ -131,6 +165,11 @@ export class ComponentTree {
   }
   protected rootLabel(): string {
     return this.tree.node(this.tree.rootId())?.label ?? 'AppRoot';
+  }
+
+  protected addKind(kind: ComponentKind): void {
+    this.paletteOpen.set(false);
+    this.add(kind);
   }
 
   protected add(kind: ComponentKind): void {

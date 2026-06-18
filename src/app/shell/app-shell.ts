@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { ComponentTree } from '../panels/component-tree/component-tree';
 import { ToolPanel } from '../panels/tool-panel/tool-panel';
@@ -7,6 +7,13 @@ import { ProjectStore } from '../core/state/project.store';
 import { DEFAULT_PROJECT_ID } from '../core/state/project.constants';
 import { ProjectExportService } from '../core/export/project-export.service';
 import { CommandBus } from '../core/commands/command-bus';
+import { ComponentTreeStore } from '../core/state/component-tree.store';
+import { buildShareUrl } from '../core/state/project-share';
+import { AgentConsentStore } from '../core/state/agent-consent.store';
+import { PROJECT_TEMPLATES } from '../core/state/project-templates';
+import { TelemetryStore } from '../core/state/telemetry.store';
+
+type ShellMenu = 'project' | 'export' | null;
 
 @Component({
   selector: 'app-root',
@@ -26,19 +33,57 @@ import { CommandBus } from '../core/commands/command-bus';
             <option value="" disabled>Sin proyectos</option>
           }
         </select>
-        <button (click)="newProject()" aria-label="Nuevo proyecto" title="Nuevo proyecto">＋ Nuevo</button>
-        <button (click)="renameProject()" [disabled]="!projects.currentId()" aria-label="Renombrar proyecto" title="Renombrar">✎ Renombrar</button>
-        <button class="danger" (click)="deleteProject()" [disabled]="!projects.currentId()" aria-label="Borrar proyecto" title="Borrar">🗑 Borrar</button>
-        <button (click)="exportProject()" aria-label="Exportar proyecto a JSON" title="Exportar JSON">⤓ JSON</button>
-        <button (click)="exportAngularZip()" aria-label="Exportar como proyecto Angular ZIP" title="Proyecto Angular (npm install && npm start)">⤓ Angular ZIP</button>
-        <label class="import" title="Importar JSON">
-          ⤒ Import
-          <input type="file" accept="application/json,.json" (change)="importProject($event)" aria-label="Importar proyecto desde JSON" />
-        </label>
+
+        <div class="menu-wrap">
+          <button
+            type="button"
+            class="menu-trigger"
+            (click)="toggleMenu('project', $event)"
+            [attr.aria-expanded]="openMenu() === 'project'"
+            aria-haspopup="menu"
+          >
+            Proyecto ▾
+          </button>
+          @if (openMenu() === 'project') {
+            <div class="menu" role="menu" (click)="$event.stopPropagation()">
+              <button type="button" role="menuitem" (click)="openNewProjectModal()">＋ Nuevo…</button>
+              <button type="button" role="menuitem" (click)="openRenameModal()" [disabled]="!projects.currentId()">✎ Renombrar…</button>
+              <button type="button" role="menuitem" class="danger-text" (click)="deleteProject()" [disabled]="!projects.currentId()">🗑 Borrar</button>
+            </div>
+          }
+        </div>
+
+        <div class="menu-wrap">
+          <button
+            type="button"
+            class="menu-trigger"
+            (click)="toggleMenu('export', $event)"
+            [attr.aria-expanded]="openMenu() === 'export'"
+            aria-haspopup="menu"
+          >
+            Exportar ▾
+          </button>
+          @if (openMenu() === 'export') {
+            <div class="menu" role="menu" (click)="$event.stopPropagation()">
+              <button type="button" role="menuitem" (click)="exportProject()">⤓ JSON</button>
+              <button type="button" role="menuitem" (click)="exportAngularZip()">⤓ Angular ZIP</button>
+              <label class="menu-import" role="menuitem">
+                ⤒ Importar JSON
+                <input type="file" accept="application/json,.json" (change)="importProject($event)" aria-label="Importar proyecto desde JSON" />
+              </label>
+            </div>
+          }
+        </div>
+
+        <button class="share" (click)="shareProject()" [disabled]="!projects.currentId()" aria-label="Compartir enlace del árbol" title="Copiar enlace con el árbol actual">🔗 Compartir</button>
       </div>
 
       <nav class="nav">
         <a routerLink="/docs" routerLinkActive="active">Docs</a>
+        <label class="telemetry" title="Telemetría anónima local (sin red)">
+          <input type="checkbox" [checked]="telemetry.enabled()" (change)="telemetry.toggle()" />
+          Stats
+        </label>
       </nav>
       <span class="status" role="status" aria-live="polite">{{ projects.status() }}</span>
     </header>
@@ -49,22 +94,80 @@ import { CommandBus } from '../core/commands/command-bus';
       <aside class="pane tools"><app-tool-panel /></aside>
       <section class="pane console"><app-agent-console /></section>
     </div>
+
+    @if (newProjectOpen()) {
+      <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="new-project-title" (click)="closeNewProjectModal()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+          <h2 id="new-project-title">Nuevo proyecto</h2>
+          <label class="field" for="tpl">Plantilla</label>
+          <select id="tpl" [value]="newTemplateId()" (change)="onTemplateChange($event)">
+            @for (t of templates; track t.id) {
+              <option [value]="t.id">{{ t.label }} — {{ t.description }}</option>
+            }
+          </select>
+          <label class="field" for="new-name">Nombre (opcional)</label>
+          <input id="new-name" type="text" [value]="newProjectName()" (input)="onNewNameInput($event)" placeholder="Mi proyecto" />
+          <div class="modal-actions">
+            <button type="button" class="primary" (click)="confirmNewProject()">Crear proyecto</button>
+            <button type="button" class="ghost" (click)="closeNewProjectModal()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (renameOpen()) {
+      <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="rename-title" (click)="closeRenameModal()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+          <h2 id="rename-title">Renombrar proyecto</h2>
+          <label class="field" for="rename-name">Nombre</label>
+          <input id="rename-name" type="text" [value]="renameName()" (input)="onRenameInput($event)" />
+          <div class="modal-actions">
+            <button type="button" class="primary" (click)="confirmRename()">Guardar</button>
+            <button type="button" class="ghost" (click)="closeRenameModal()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (consent.pending(); as req) {
+      <div class="consent-backdrop" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+        <div class="consent-card">
+          <h2 id="consent-title">El agente quiere ejecutar <code>{{ req.toolName }}</code></h2>
+          <p>{{ req.summary }}</p>
+          <div class="consent-actions">
+            <button class="primary" (click)="consent.approve()">Permitir</button>
+            <button class="ghost" (click)="consent.deny()">Rechazar</button>
+          </div>
+          <label class="consent-opt">
+            <input type="checkbox" [checked]="consent.requireConsent()" (change)="consent.toggleRequire()" />
+            Pedir confirmación en acciones destructivas
+          </label>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     :host { display:flex; flex-direction:column; height:100vh; }
     .topbar { display:flex; align-items:center; gap:.8rem; padding:.55rem 1rem; background:var(--surface-1); border-bottom:1px solid var(--border); flex-wrap:wrap; }
-    .logo { font-weight:700; }
-    .project-bar { display:flex; align-items:center; gap:.35rem; }
+    .logo { font-weight:700; flex-shrink:0; }
+    .project-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
     .sr-label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
     select { background:var(--surface-2); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:.25rem .5rem; font-size:.78rem; }
-    .topbar button, .import { background:var(--surface-2); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:.25rem .55rem; font-size:.74rem; cursor:pointer; }
-    .topbar button:hover, .import:hover { border-color:var(--accent); }
-    .topbar button.danger:hover { border-color:#e55; color:#f88; }
-    .topbar button:disabled { opacity:.45; cursor:not-allowed; }
-    .import input { display:none; }
+    .menu-trigger, .share { background:var(--surface-2); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:.25rem .55rem; font-size:.74rem; cursor:pointer; }
+    .menu-trigger:hover { border-color:var(--accent); }
+    .share { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+    .share:disabled { opacity:.45; cursor:not-allowed; }
+    .menu-wrap { position:relative; }
+    .menu { position:absolute; top:calc(100% + .25rem); left:0; z-index:50; min-width:11rem; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:.25rem; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+    .menu button, .menu-import { display:block; width:100%; text-align:left; background:transparent; border:0; color:var(--fg); border-radius:6px; padding:.35rem .5rem; font-size:.74rem; cursor:pointer; }
+    .menu button:hover, .menu-import:hover { background:var(--surface-1); }
+    .menu button:disabled { opacity:.45; cursor:not-allowed; }
+    .menu button.danger-text { color:#f88; }
+    .menu-import input { display:none; }
     .nav a { font-size:.78rem; color:var(--muted); text-decoration:none; padding:.2rem .55rem; border-radius:6px; }
     .nav a:hover { color:var(--fg); background:var(--surface-2); }
     .nav a.active { color:#fff; background:var(--accent); }
+    .telemetry { font-size:.7rem; color:var(--muted); display:flex; align-items:center; gap:.25rem; margin-left:.5rem; cursor:pointer; }
     .status { font-size:.7rem; color:var(--muted); margin-left:auto; max-width:18rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .layout {
       flex:1; min-height:0; display:grid; gap:1px; background:var(--border);
@@ -100,25 +203,104 @@ import { CommandBus } from '../core/commands/command-bus';
         grid-template-rows: minmax(120px, 20vh) 1fr minmax(140px, 22vh) minmax(160px, 26vh);
       }
     }
+
+    .modal-backdrop, .consent-backdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:1000;
+    }
+    .modal-card, .consent-card {
+      background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:1.2rem; width:min(22rem, 92vw); box-shadow:0 8px 32px rgba(0,0,0,.4);
+    }
+    .modal-card h2, .consent-card h2 { margin:0 0 .5rem; font-size:.95rem; }
+    .field { display:block; font-size:.72rem; color:var(--muted); margin:.6rem 0 .2rem; }
+    .modal-card select, .modal-card input { width:100%; background:var(--surface-2); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:.35rem .5rem; font-size:.82rem; }
+    .modal-actions, .consent-actions { display:flex; gap:.5rem; margin-top:.9rem; }
+    .primary { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:.35rem .8rem; cursor:pointer; font-size:.8rem; }
+    .ghost { background:transparent; border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:.35rem .8rem; cursor:pointer; font-size:.8rem; }
+    .consent-card code { color:var(--accent); }
+    .consent-opt { font-size:.72rem; color:var(--muted); display:flex; gap:.35rem; align-items:center; margin-top:.6rem; }
   `],
 })
 export class AppShell {
   protected readonly projects = inject(ProjectStore);
+  protected readonly consent = inject(AgentConsentStore);
+  protected readonly telemetry = inject(TelemetryStore);
+  protected readonly templates = PROJECT_TEMPLATES;
   private readonly bus = inject(CommandBus);
+  private readonly tree = inject(ComponentTreeStore);
   private readonly router = inject(Router);
   private readonly exporter = inject(ProjectExportService);
+
+  protected readonly openMenu = signal<ShellMenu>(null);
+  protected readonly newProjectOpen = signal(false);
+  protected readonly newTemplateId = signal('blank');
+  protected readonly newProjectName = signal('');
+  protected readonly renameOpen = signal(false);
+  protected readonly renameName = signal('');
+
+  @HostListener('document:click')
+  protected closeMenus(): void {
+    this.openMenu.set(null);
+  }
+
+  protected toggleMenu(menu: ShellMenu, event: Event): void {
+    event.stopPropagation();
+    this.openMenu.update((current) => (current === menu ? null : menu));
+  }
 
   protected switchProject(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;
     if (id) void this.router.navigate(['/project', id]);
   }
 
-  protected async newProject(): Promise<void> {
-    const id = await this.projects.createProject();
+  protected openNewProjectModal(): void {
+    this.openMenu.set(null);
+    this.newTemplateId.set('blank');
+    this.newProjectName.set('');
+    this.newProjectOpen.set(true);
+  }
+
+  protected closeNewProjectModal(): void {
+    this.newProjectOpen.set(false);
+  }
+
+  protected onTemplateChange(event: Event): void {
+    this.newTemplateId.set((event.target as HTMLSelectElement).value);
+  }
+
+  protected onNewNameInput(event: Event): void {
+    this.newProjectName.set((event.target as HTMLInputElement).value);
+  }
+
+  protected async confirmNewProject(): Promise<void> {
+    const id = await this.projects.createProject(
+      this.newProjectName().trim() || undefined,
+      this.newTemplateId(),
+    );
+    this.newProjectOpen.set(false);
     void this.router.navigate(['/project', id]);
   }
 
+  protected openRenameModal(): void {
+    this.openMenu.set(null);
+    this.renameName.set(this.projects.currentName());
+    this.renameOpen.set(true);
+  }
+
+  protected closeRenameModal(): void {
+    this.renameOpen.set(false);
+  }
+
+  protected onRenameInput(event: Event): void {
+    this.renameName.set((event.target as HTMLInputElement).value);
+  }
+
+  protected confirmRename(): void {
+    void this.projects.renameProject(this.renameName());
+    this.renameOpen.set(false);
+  }
+
   protected exportProject(): void {
+    this.openMenu.set(null);
     const text = this.projects.exportCurrent();
     const blob = new Blob([text], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -127,9 +309,11 @@ export class AppShell {
     a.download = `${this.projects.currentName() || 'proyecto'}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    this.telemetry.record('export', 'json');
   }
 
   protected async exportAngularZip(): Promise<void> {
+    this.openMenu.set(null);
     try {
       await this.exporter.exportAsZip();
     } catch (e) {
@@ -138,14 +322,21 @@ export class AppShell {
     }
   }
 
-  protected renameProject(): void {
-    const current = this.projects.currentName();
-    const name = prompt('Nombre del proyecto:', current);
-    if (name === null) return;
-    void this.projects.renameProject(name);
+  protected shareProject(): void {
+    const id = this.projects.currentId();
+    if (!id) return;
+    const url = buildShareUrl(this.tree.state(), id);
+    void navigator.clipboard.writeText(url).then(
+      () => this.projects.status.set('Enlace copiado al portapapeles'),
+      () => {
+        this.projects.status.set('Copia el enlace manualmente');
+        prompt('Enlace para compartir:', url);
+      },
+    );
   }
 
   protected async deleteProject(): Promise<void> {
+    this.openMenu.set(null);
     const id = this.projects.currentId();
     if (!id) return;
     const name = this.projects.currentName();
@@ -163,6 +354,7 @@ export class AppShell {
   }
 
   protected importProject(event: Event): void {
+    this.openMenu.set(null);
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
@@ -180,7 +372,6 @@ export class AppShell {
     input.value = '';
   }
 
-  /** Atajos: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z o Ctrl+Y = redo. */
   @HostListener('document:keydown', ['$event'])
   protected onKeydown(event: KeyboardEvent): void {
     if (this.isEditableTarget(event.target)) return;

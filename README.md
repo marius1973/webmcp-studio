@@ -4,8 +4,8 @@
   <a href="https://github.com/marius1973/webmcp-studio/actions/workflows/ci.yml">
     <img src="https://github.com/marius1973/webmcp-studio/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
-  <img src="https://img.shields.io/badge/WebMCP-Experimental-purple?logo=angular" />
-  <img src="https://img.shields.io/badge/AI_Agent-Ready-success?logo=openai" />
+  <img src="https://img.shields.io/badge/WebMCP-Experimental-purple" alt="WebMCP Experimental" />
+  <img src="https://img.shields.io/badge/AI_Agent-Ready-success" alt="AI Agent Ready" />
   <img src="https://img.shields.io/badge/Angular-v22-dd0031?logo=angular" />
   <img src="https://img.shields.io/badge/Signals-Native-blue?logo=typescript" />
 </p>
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="WebMCP Studio: 4 paneles, paleta y drag & drop, undo, simulador de agente (create_component) y narración en el Observador" width="960" />
+  <img src="docs/demo.gif" alt="WebMCP Studio: 4 paneles, paleta y drag & drop, undo, playbook Landing analytics, replay en el Observador y Preview" width="960" />
 </p>
 
 Un **IDE en el navegador** donde los agentes de IA editan estructura Angular en vivo — no generan código de una vez, sino que mutan, deshacen y observan paso a paso.
@@ -55,29 +55,27 @@ WebMCP es un estándar W3C en desarrollo. Este proyecto usa la implementación e
 - **Fallback**: simulador integrado + `@mcp-b/webmcp-polyfill` cubren el mismo contrato de tools.
 - **APIs sujetas a cambios** entre versiones menores de Angular.
 
-## 🧪 Prompt para agentes de IA
+<details>
+<summary>🧪 Prompt para agentes de IA</summary>
 
 Ejemplo de system prompt **alineado con la demo**: el Preview muestra bloques etiquetados (`container`, `card`, `text`, `button`) — un **esqueleto estructural**, no una landing pulida con navbar ni links.
 
 ```text
 Eres un agente en Angular WebMCP Studio.
-Tipos disponibles: container, card, button, text, input.
-No hay navbar, links ni estilos custom — solo árbol + preview wireframe.
+Tipos disponibles: container, card, button, text, input, link, divider, image.
+Preview wireframe con layout (direction, gap, align, textSize) — no es diseño final.
 
-Armá un esqueleto de landing para analytics:
+Construye un esqueleto de landing para analytics:
 
-1. read_tree — inspeccioná root antes de editar
-2. container "Hero" bajo root:
-   - text: "Visualiza tus datos"
-   - text: "Dashboards en tiempo real para equipos de datos"
-   - button (variant primary): "Empezar gratis"
-3. Tres card hermanas bajo root, cada una con un text hijo:
-   - "Real-time" / "AI Insights" / "Collaboration"
-4. Preview — confirmá la estructura anidada (bloques con etiquetas, no diseño final)
-5. export_project_code con download: true → ZIP Angular
+1. read_tree — inspecciona root antes de editar
+2. run_playbook(landing-analytics) — o paso a paso con create_component
+3. suggest_next — revisa qué falta (CTA, cards vacías…)
+4. Preview — confirma estructura anidada
+5. export_project_code con download: true → ZIP Angular (secciones + rutas)
 
 Tools: create_component, update_component, move_component, read_tree,
-new_component_via_form, update_component_via_form, export_project_code
+run_playbook, apply_patch, explain_selection, suggest_next, export_schema,
+export_project_code, new_component_via_form, update_component_via_form
 ```
 
 **Qué verás en el demo** (coincide con el prompt):
@@ -87,7 +85,7 @@ new_component_via_form, update_component_via_form, export_project_code
 | `container` "Hero" + textos + botón | Marco con etiqueta **Hero**, textos y botón renderizados como widgets simples |
 | 3 `card` con `text` hijo | Tres tarjetas con borde sólido y un bloque de texto cada una |
 | Preview | Bloques anidados con labels — **wireframe**, no SaaS terminado |
-| `export_project_code` | ZIP con componentes Angular standalone generados desde el árbol |
+| `export_project_code` | ZIP Angular con secciones, rutas lazy y `npm start` listo |
 
 **Cómo lo ejecuta el agente**
 
@@ -99,39 +97,48 @@ new_component_via_form, update_component_via_form, export_project_code
 | Ver resultado | Modo **Preview** en el canvas |
 | Código | `export_project_code` con `download: true` |
 
-> Renombrar el proyecto a "AnalyticsLanding" es opcional (topbar **Renombrar**). El valor del demo es el **flujo agente → tools → árbol → undo → export**, no el pixel-perfect.
+> Renombrar el proyecto a "AnalyticsLanding" es opcional (menú **Proyecto → Renombrar**). El valor del demo es el **flujo agente → tools → árbol → undo → export**, no el pixel-perfect.
+
+</details>
 
 ## Características
 
 Cada mutación — manual o del agente — es una **tool WebMCP** o un **Command** con undo/redo, narración en el Observador y export a Angular.
 
 ### Editor visual
-- **4 paneles**: árbol de componentes, canvas (Estructura / Preview), panel de herramientas y consola del agente.
-- **Árbol**: paleta para crear nodos, drag & drop (CDK) para reordenar/reparentar, navegación por teclado (↑↓←→, Home/End, Supr).
-- **Canvas Preview**: render dinámico con `NgComponentOutlet` (botón, texto, input, contenedores).
-- **Inspector de propiedades**: Signal Form para `label` y props por tipo (`variant`, `text`, `placeholder`).
-- **Undo/redo** global (toolbar, consola y atajos Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z o Ctrl+Y). No se activa en campos editables ni `contenteditable`.
+- **4 paneles**: árbol de componentes, canvas (Preview / Estructura), panel de herramientas y consola del agente.
+- **Árbol**: menú **＋ Añadir** (8 kinds), drag & drop (CDK), navegación por teclado (↑↓←→, Home/End, Supr).
+- **Canvas**: el **stage** (Preview / Estructura) ocupa el centro; inspector y simulador en secciones colapsables.
+- **Preview**: `NgComponentOutlet` + layout flex (`direction`, `gap`, `align`, `textSize`) — wireframe estructural.
+- **Inspector**: Signal Form por tipo; visible al seleccionar un nodo (no root).
+- **Playbooks** en el simulador (colapsable): *Landing analytics*, *Formulario contacto* (un solo undo).
+- **Undo/redo** en la toolbar del canvas y atajos Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z o Ctrl+Y.
 
 ### WebMCP
-- Tools de edición: `create_component`, `update_component`, `delete_component`, `move_component`, `read_tree`, `list_component_types`, `undo`, `redo`, **`export_project_code`**.
-- **Signal Forms como tools**: `new_component_via_form`, `update_component_via_form` (`experimentalWebMcpTool`).
-- Tools de app: `greet`, `ping_studio`. En `/docs`: `search_docs`, `list_sections`.
-- **Auto-cleanup por ruta**: las tools del editor viven en `project/:id` y se desregistran al navegar (`withExperimentalAutoCleanupInjectors`).
-- **Simulador de agente** en el canvas para probar tools sin agente nativo del navegador.
-- Respuestas con flag **`isError`** para que el agente distinga éxito de error.
+- Tools de edición: `create_component`, `update_component`, `delete_component`, `move_component`, `read_tree`, `list_component_types`, `undo`, `redo`, `export_project_code`, **`run_playbook`**, **`apply_patch`**, **`explain_selection`**, **`suggest_next`**, **`export_schema`**, **`list_playbooks`**.
+- Tools declarativas (nodo seleccionado): `update_selected_component`, `delete_selected_component`.
+- **Signal Forms como tools**: `new_component_via_form`, `update_component_via_form`.
+- Tools de app: `greet`, `ping_studio`. En **`/docs`**: `search_docs`, `list_sections` (auto-cleanup de tools de edición).
+- **Panel de herramientas**: sección **Destacadas (demo)** + grupos (Edición, Asesor, Forms, App).
+- **Auto-cleanup por ruta** (`withExperimentalAutoCleanupInjectors`).
+- **Simulador de agente** en el canvas (sección colapsable); respuestas con **`isError`**.
+- **Consentimiento** antes de `delete_component` / `apply_patch` (modal).
 
 ### Modo Observador
-- Timeline en la consola con pasos narrados (qué, por qué, nodos afectados, origen 🤖/🙂).
-- Acciones **manuales y del agente** (vía `CommandBus` y tools).
-- Input `rationale` en las tools de edición; toggle para activar/desactivar la narración.
+- Timeline con pasos narrados (qué, por qué, nodos afectados, origen 🤖/🙂).
+- **Replay**: clic en un paso → resalta nodos en árbol y preview.
+- Acciones manuales y del agente; toggle para activar/desactivar narración.
 
 ### Proyectos y persistencia
-- **IndexedDB** sin dependencias extra (`PersistenceService`).
-- Multiproyecto por ruta `project/:id`; autosave debounced; undo no cruza proyectos.
-- Topbar: crear, **renombrar**, **borrar**, exportar JSON, **exportar Angular ZIP** (`npm install && npm start`).
-- Import con **validación** del árbol y **confirmación** antes de sobrescribir.
-- Entrada en `/`: último proyecto usado, o **`alpha`** por defecto (`/project/alpha`).
-- Errores de persistencia visibles en la barra de estado (`role="status"`).
+- **IndexedDB** (`PersistenceService`); multiproyecto `project/:id`; autosave debounced.
+- Topbar: selector de proyecto, menú **Proyecto** (nuevo con plantillas, renombrar, borrar), menú **Exportar** (JSON, Angular ZIP, import), **🔗 Compartir** (`?share=`).
+- Plantillas al crear: blank, landing-saas, login, dashboard-shell.
+- Import con validación y confirmación; entrada `/` → último proyecto o `alpha`.
+- **Telemetría opt-in** (checkbox Stats): eventos locales, sin red ni PII.
+
+### Docs (`/docs`)
+- Ruta separada que demuestra **auto-cleanup**: desaparecen tools de edición y aparecen `search_docs` / `list_sections`.
+- Ayuda en app sobre el cambio de tools por ruta; corpus consultable en evolución.
 
 ### Accesibilidad y layout
 - ARIA en topbar, árbol, tabs de la consola y preview widgets.
@@ -145,42 +152,27 @@ npm start        # http://localhost:4200
 npm run build
 ```
 
-Al abrir la app, `/` redirige al último proyecto que usaste o a **`/project/alpha`** por defecto (se crea si no existe).
+Al abrir la app, `/` redirige al último proyecto utilizado o a **`/project/alpha`** por defecto (se crea si no existe).
 
 ## Probarlo (30 segundos)
 
-1. Abrí el **[demo](https://webmcp-studio-buur.vercel.app/)** → ya tenés un proyecto `alpha`.
-2. En el canvas, franja **Simular agente** → clic en `create_component(button)` o `create_component(card)` → mirá el árbol y la pestaña **Observador**.
+1. Abre el **[demo](https://webmcp-studio-buur.vercel.app/)** o `npm start` → `http://localhost:4200`.
+2. Expande **Simular agente y playbooks** → playbook **Landing analytics** → pestaña **Observador**.
 
-Listo. Para explorar más:
+Para explorar más:
 
-1. En el árbol, selecciona un nodo y usa la paleta (Contenedor, Card, Botón…) para crear hijos.
-2. Arrastra por ⠿ para reordenar o reparentar; usa las flechas del teclado con el foco en el árbol.
-3. Edita propiedades en el inspector del canvas y aplica con un único Command `updateNode`.
-4. Prueba el **simulador de agente** (cualquier navegador) o invoca tools desde un agente WebMCP nativo (Edge 147+; Chrome 149+ con Origin Trial o flag de desarrollo).
-5. Revisa la pestaña **Observador** en la consola: cada paso queda narrado.
-6. Exporta el proyecto como **Angular ZIP** desde el topbar o con la tool `export_project_code`.
+1. Menú **＋ Añadir** en el árbol; drag & drop por ⠿; inspector al seleccionar un nodo.
+2. `suggest_next` / `explain_selection` desde el simulador (sección colapsable).
+3. Clic en un paso del **Observador** → resalta nodos afectados.
+4. **🔗 Compartir** copia URL con el árbol (`?share=`).
+5. Menú **Exportar → Angular ZIP** o tool `export_project_code`.
+6. Enlace **Docs** → observa el cambio de tools en el panel derecho.
+7. Checkbox **Stats** (telemetría local opt-in).
 
-## Cómo Funciona Internamente
+<details>
+<summary>Cómo funciona internamente</summary>
 
 La IA no manipula el DOM directamente: cada acción atraviesa **WebMCP** → **Angular DI** → **CommandBus** → **stores** en signals. Las tools se registran por ruta y se limpian solas al navegar.
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   AI Agent      │────▶│  WebMCP Bridge  │────▶│  Angular DI     │
-│  (Browser AI)   │◄────│  (navigator.    │◄────│  (CommandBus)   │
-│                 │     │   modelContext) │     │                 │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                │
-                                ▼
-                        ┌─────────────────┐
-                        │  Tool Registry  │
-                        │  (Auto-cleanup  │
-                        │   per route)    │
-                        └─────────────────┘
-```
-
-Flujo detallado (renderizado en GitHub con [Mermaid](https://mermaid.js.org)):
 
 ```mermaid
 flowchart TD
@@ -200,72 +192,68 @@ flowchart TD
 | **CommandBus** | Despacha Commands, undo/redo con snapshots y narración de acciones manuales. |
 | **Tree Store** | Árbol normalizado en signals; fuente de verdad del editor y del export Angular. |
 
+</details>
+
 ## Estructura
 
 ```
 src/app/
 ├── core/
-│   ├── commands/      # Command, tree-commands, CommandBus (undo/redo + narración manual)
-│   ├── persistence/   # IndexedDB (PersistenceService)
-│   ├── export/        # generador de proyecto Angular + ZIP
-│   ├── state/         # stores (árbol, proyectos, observador, tools, log)
-│   └── webmcp/        # tools, serialización, validación, tipos WebMCP
-├── panels/
-│   ├── component-tree/
-│   ├── canvas/        # estructura, preview, Signal Forms
-│   ├── agent-console/
-│   ├── tool-panel/
-│   ├── docs/
-│   └── project-entry.ts   # redirección inicial
+│   ├── commands/      # CommandBus (undo/redo, batch, narración)
+│   ├── playbooks/     # playbooks + executor (@last/@parent)
+│   ├── export/        # Angular ZIP, tree-schema, secciones
+│   ├── bridge/        # puente postMessage / WS (dev)
+│   ├── persistence/   # IndexedDB
+│   ├── state/         # stores (árbol, proyectos, observador, consent, telemetry)
+│   └── webmcp/        # tools, advisor, validación
+├── panels/            # árbol, canvas, consola, docs
 ├── shell/             # layout 4 paneles + topbar
-└── app.routes.ts      # project/:id, docs, /
+└── app.routes.ts
 ```
+
+Documentación extra: [`docs/ORIGIN_TRIAL.md`](./docs/ORIGIN_TRIAL.md) · [`docs/MCP_BRIDGE.md`](./docs/MCP_BRIDGE.md) · [`docs/BUNDLE.md`](./docs/BUNDLE.md) · [`docs/LINKEDIN_ARTICLE.md`](./docs/LINKEDIN_ARTICLE.md)
 
 ## Testing
 
 ```bash
-npm test              # unit (Vitest) — 44 tests
-npm run test:watch    # Vitest en modo watch
-npm run test:e2e      # e2e (Playwright)
+npm test              # unit (Vitest) — 66 tests
+npm run test:watch
+npm run test:e2e      # e2e (Playwright) — también en CI
+npm run benchmark     # WebMCP vs DOM simulado (honesto)
+npm run bridge        # hub WebSocket para integración externa (dev)
 npm run demo:hero     # GIF hero del README (~15 s)
-npm run demo:gif      # webm hero → docs/demo.gif (ffmpeg + gifsicle)
-npm run demo:optimize # recomprime docs/demo.gif si ya existe
-npm run demo:readme   # hero + gif optimizado en un paso
-npm run demo:video    # recorrido completo (DEMO.md, escenas 0–8)
+npm run demo:gif
+npm run demo:readme   # hero + gif optimizado
+npm run demo:video    # recorrido completo (DEMO.md)
 ```
 
-El GIF del README pesa **~1 MB** (960×540, 8 fps, paleta 96 colores + `gifsicle -O3 --lossy=80`). Sin optimizar suele superar 2 MB.
-
-Cobertura unitaria: store del árbol, Commands, CommandBus, tools de edición, validación/import, observador, clonado del árbol y persistencia del último proyecto.
-
-E2E (`e2e/`): crear/deshacer, narración del agente, cambio de tools editor↔docs, persistencia entre recargas.
-
-CI en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) (`npm test` + `npm run build` en push a `master`). [Último run](https://github.com/marius1973/webmcp-studio/actions/workflows/ci.yml).
+CI en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml): `npm test` + `npm run build` + **e2e** en push a `master`.
 
 Guion de demo en [`DEMO.md`](./DEMO.md).
 
-## Deploy (solo si querés hostear tu propia instancia)
+## Deploy (solo si quieres alojar tu propia instancia)
 
-¿Solo querés probar? Usá el **[demo en vivo](https://webmcp-studio-buur.vercel.app/)** — no hace falta deployar nada.
+¿Solo quieres probar? Usa el **[demo en vivo](https://webmcp-studio-buur.vercel.app/)** — no hace falta desplegar nada.
 
 <details>
 <summary>Click para instrucciones de Vercel</summary>
 
-SPA estática: no requiere backend ni variables de entorno. La config vive en [`vercel.json`](./vercel.json).
+SPA estática. Config en [`vercel.json`](./vercel.json). Build: `ng build` + inyección opcional de Origin Trial ([`docs/ORIGIN_TRIAL.md`](./docs/ORIGIN_TRIAL.md)).
 
 | Setting | Valor |
 |---------|-------|
 | Build Command | `npm run build` |
 | Output Directory | `dist/webmcp-studio/browser` |
 | Install Command | `npm ci` |
-| Node.js | 22 (`.nvmrc` + `engines` en `package.json`) |
+| Node.js | 22 |
+| Env opcional | `WEBMCP_ORIGIN_TRIAL_TOKEN` (Chrome WebMCP nativo) |
 
 ### Pasos
 
 1. Subir el repo a GitHub.
-2. En [vercel.com](https://vercel.com) → **Add New Project** → importá el repositorio.
-3. Vercel detecta `vercel.json` automáticamente; confirmá y hacé **Deploy**.
-4. Abrí tu URL (ej. **[webmcp-studio-buur.vercel.app](https://webmcp-studio-buur.vercel.app/)**) → redirige a `/project/alpha` (o al último proyecto usado).
+2. En [vercel.com](https://vercel.com) → **Add New Project** → importa el repositorio.
+3. Vercel detecta `vercel.json` automáticamente; confirma y haz **Deploy**.
+4. Abre tu URL (ej. **[webmcp-studio-buur.vercel.app](https://webmcp-studio-buur.vercel.app/)**) → redirige a `/project/alpha` (o al último proyecto utilizado).
 
 Los **rewrites** envían rutas como `/project/alpha` y `/docs` a `index.html` para que el router de Angular funcione al recargar o compartir links.
 
@@ -273,15 +261,16 @@ Los **rewrites** envían rutas como `/project/alpha` y `/docs` a `index.html` pa
 
 - **Persistencia**: IndexedDB es local al navegador y dominio; no sincroniza entre dispositivos.
 - **WebMCP**: el agente nativo corre en el cliente (Edge 147+; Chrome 149+ OT). El demo en Vercel usa simulador/polyfill — no requiere flags.
-- **Preview deployments**: cada PR puede tener su URL de preview si conectás el repo.
+- **Preview deployments**: cada PR puede tener su URL de preview si conectas el repo.
 
 </details>
 
 ## Stack
 
 - Angular v22 **standalone + zoneless**, TypeScript 6.0, Signals y Signal Forms.
-- Polyfill `@mcp-b/webmcp-polyfill` cuando `navigator.modelContext` no está disponible.
-- El árbol se clona con `cloneTreeState` (sin `JSON.stringify`) para snapshots de undo/redo.
+- Polyfill `@mcp-b/webmcp-polyfill`; JSZip en chunk lazy al exportar ZIP.
+- PWA mínima (`manifest` + service worker en producción).
+- `cloneTreeState` para snapshots de undo/redo.
 
 ## Por qué importa
 

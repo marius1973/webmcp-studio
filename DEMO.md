@@ -6,7 +6,7 @@ Guion completo para presentación en vivo, video o GIF. Cubre editor manual, age
 |---------|----------|---------------|
 | **Completa** | ~8 min | README, conferencias, primer contacto con el repo |
 | **Rápida** | ~3 min | Escenas marcadas con ⚡ abajo |
-| **Automatizada (README)** | ~15 s | `npm run demo:readme` — GIF hero: 4 paneles, DnD, undo, agente, Observador |
+| **Automatizada (README)** | ~15 s | `npm run demo:readme` — GIF hero: 4 paneles, DnD, undo, playbook, Observador |
 | **Automatizada (completa)** | ~2–3 min | `npm run demo:video` (Playwright, alineado con escenas 0–8) |
 
 **Navegador ideal (agente nativo):** Edge 147+ (`navigator.modelContext` integrado) o Chrome 149+ ([Origin Trial](https://developer.chrome.com/docs/ai/webmcp); flag local: `chrome://flags/#enable-webmcp-testing`).  
@@ -32,7 +32,7 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 - [ ] Ventana ancha (≥ 1200 px) para ver los 4 paneles; en móvil el layout se apila.
 - [ ] Consola en pestaña **Observador** (no Tool calls).
 - [ ] Modo Observador **activado** (checkbox en la consola).
-- [ ] Proyecto **alpha** limpio o recién creado (opcional: **＋ Nuevo**).
+- [ ] Proyecto **alpha** limpio o recién creado (opcional: menú **Proyecto → Nuevo**).
 - [ ] Badge WebMCP en el canvas: verde = nativo, ámbar = polyfill o sin agente.
 
 ---
@@ -41,12 +41,12 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 **Objetivo:** orientar al público en los 4 paneles y el topbar.
 
-1. Mostrá el layout:
-   - **Izquierda:** Árbol de componentes (paleta + drag ⠿).
-   - **Centro:** Canvas (Preview / Estructura) + simulador + Signal Forms.
-   - **Derecha:** Panel de Herramientas (schemas de las tools activas).
+1. Muestra el layout:
+   - **Izquierda:** Árbol de componentes (menú ＋ Añadir + drag ⠿).
+   - **Centro:** Canvas (Preview / Estructura); simulador y forms en secciones colapsables.
+   - **Derecha:** Panel de Herramientas (schemas; sección **Destacadas** + grupos).
    - **Abajo:** Consola (Observador / Tool calls).
-2. Topbar: selector de proyecto, **＋ Nuevo**, **Renombrar**, **Borrar**, **JSON**, **Angular ZIP**, **Docs**.
+2. Topbar: selector de proyecto, menú **Proyecto**, menú **Exportar**, **🔗 Compartir**, **Docs**, **Stats**.
 3. Frase clave: *"Todo lo que hace un humano o un agente pasa por el mismo CommandBus."*
 
 ---
@@ -55,11 +55,11 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 **Objetivo:** mostrar que el Observador registra acciones **manuales** (🙂), no solo del agente.
 
-1. En el árbol, seleccioná **AppRoot** y usá la paleta: **Card** → **Botón**.
-2. Arrastrá el botón por el handle ⠿ para reordenar o reparentar.
-3. Seleccioná el botón; en el **inspector de propiedades** cambiá `label` y `variant` → **Aplicar**.
-4. Abrí la consola **Observador**: cada paso aparece con 🙂 y acciones como `create_component`, `update_component`.
-5. (Opcional) Navegá el árbol con **flechas** del teclado; **Supr** borra un nodo.
+1. En el árbol, selecciona **AppRoot** y usa **＋ Añadir**: **Card** → **Botón**.
+2. Arrastra el botón por el handle ⠿ para reordenar o reparentar.
+3. Selecciona el botón; expande **Inspector de propiedades** si hace falta; cambia `label` y `variant` → **Aplicar**.
+4. Abre la consola **Observador**: cada paso aparece con 🙂 y acciones como `create_component`, `update_component`.
+5. (Opcional) Navega el árbol con **flechas** del teclado; **Supr** borra un nodo.
 6. Frase clave: *"Usuario y agente comparten historial y undo."*
 
 ---
@@ -68,11 +68,12 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 **Objetivo:** la IA modifica el árbol vía tools, no leyendo HTML.
 
-1. En **Simular agente**, ejecutá:
+1. Expande **Simular agente y playbooks** y ejecuta:
    - `create_component(card)` — *"Agrupo contenido en una card."*
    - Con la card seleccionada: `create_component(button)` — *"Agrego un botón de acción."*
-2. Pasá el canvas a **Preview**: card y botón renderizados con `NgComponentOutlet`.
-3. Volvé a **Estructura** para ver el árbol anidado en el canvas.
+   - O playbook **Landing analytics** (un solo undo).
+2. Pasa el canvas a **Preview**: card y botón renderizados con `NgComponentOutlet`.
+3. Vuelve a **Estructura** para ver el árbol anidado en el canvas.
 4. En Observador: pasos con 🤖, tool name y **"porque …"** (rationale).
 5. Panel derecho: schemas de `create_component`, `move_component`, etc.
 6. Frase clave: *"Cada tool es un envoltorio fino sobre un Command."*
@@ -85,15 +86,15 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 ### 3a — Crear con `new_component_via_form`
 
-1. Bloque **Signal Form → tool `new_component_via_form`**.
+1. En la sección colapsable del simulador: bloque **Signal Form → tool `new_component_via_form`**.
 2. kind: `text`, label: `Título de la demo`, parentId: `root` → **Crear**.
-3. Explicá: el agente invoca la **misma tool**; Angular infiere schema y validación.
+3. Explica: el agente invoca la **misma tool**; Angular infiere schema y validación.
 
 ### 3b — Editar con `update_component_via_form`
 
-1. Seleccioná un nodo **text** o **button** en el árbol.
-2. En el inspector, mostrá el hint **Signal Form → tool `update_component_via_form`**.
-3. Cambiá props y **Aplicar**; verificá en Preview.
+1. Selecciona un nodo **text** o **button** en el árbol.
+2. En el inspector, muestra el hint **Signal Form → tool `update_component_via_form`**.
+3. Cambia props y **Aplicar**; verifica en Preview.
 4. Frase clave: *"Forms humanos = tools del agente, sin duplicar lógica."*
 
 ---
@@ -103,9 +104,9 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 **Objetivo:** dos vistas de la consola + toggle del modo narración.
 
 1. Pestaña **Tool calls**: log técnico `toolName(args) → result` con origen 🤖/🙂.
-2. Volvé a **Observador**: timeline narrada (qué, por qué, nodos afectados).
-3. Desactivá **Modo Observador**, creá un componente manual → no se registra.
-4. Reactivalo y repetí una acción → vuelve a narrar.
+2. Vuelve a **Observador**: timeline narrada (qué, por qué, nodos afectados); clic en un paso resalta nodos.
+3. Desactiva **Modo Observador**, crea un componente manual → no se registra.
+4. Reactívalo y repite una acción → vuelve a narrar.
 5. (Opcional) Pestaña Tool calls → simular `greet()` / `ping_studio()` (tools de app).
 
 ---
@@ -114,7 +115,7 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 **Objetivo:** deshacer lo del agente igual que lo manual.
 
-1. Tras las acciones del agente, usá **Undo** en la consola o toolbar del canvas (2–3 veces).
+1. Tras las acciones del agente, usa **Undo** en la **toolbar del canvas** (2–3 veces).
 2. El árbol y el Preview revierten en sincronía.
 3. **Redo** para recuperar un paso.
 4. Atajos: `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z` (o `Ctrl+Y`).
@@ -129,8 +130,8 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 1. Panel de Herramientas: `create_component`, `export_project_code`, `new_component_via_form`, …
 2. Topbar → **Docs**.
 3. Las tools de edición **desaparecen**; aparecen `search_docs` y `list_sections`.
-4. Mostrá el texto sobre `withExperimentalAutoCleanupInjectors`.
-5. **← Volver al editor** → recuperás las tools de edición.
+4. Muestra el texto sobre `withExperimentalAutoCleanupInjectors`.
+5. **← Volver al editor** → recuperas las tools de edición.
 6. Frase clave: *"El agente solo ve las tools del contexto actual."*
 
 ---
@@ -139,12 +140,12 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 **Objetivo:** IndexedDB, rutas y gestión en topbar.
 
-1. **＋ Nuevo** → creá un proyecto; añadí 1–2 componentes desde la paleta.
-2. **Renombrar** el proyecto (prompt).
-3. Cambiá entre proyectos en el selector: cada uno tiene su árbol e historial propio.
-4. **Recargá** la página (F5): todo persiste (IndexedDB).
-5. **⤓ JSON** → exportá el árbol; **Import** con confirmación y validación.
-6. (Opcional) **🗑 Borrar** un proyecto de prueba.
+1. Menú **Proyecto → Nuevo** (elige plantilla); añade 1–2 componentes con **＋ Añadir**.
+2. **Proyecto → Renombrar** (modal).
+3. Cambia entre proyectos en el selector: cada uno tiene su árbol e historial propio.
+4. **Recarga** la página (F5): todo persiste (IndexedDB).
+5. Menú **Exportar → JSON**; **Importar JSON** con confirmación y validación.
+6. (Opcional) **Proyecto → Borrar** un proyecto de prueba.
 7. Frase clave: *"Sin backend: persistencia local, lista para Vercel como SPA."*
 
 ---
@@ -153,10 +154,10 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 **Objetivo:** del diseño visual a `ng new` funcional.
 
-1. Construí una UI mínima en **alpha** (card + botón + text).
-2. Topbar → **⤓ Angular ZIP** (o tool `export_project_code` con `download: true`).
-3. Abrí el ZIP: `package.json`, `angular.json`, `src/app/app.component.ts`, `generated-ui.component.ts`.
-4. En otra terminal (opcional, si tenés tiempo en vivo):
+1. Construye una UI mínima en **alpha** (card + botón + text).
+2. Menú **Exportar → Angular ZIP** (o tool `export_project_code` con `download: true`).
+3. Abre el ZIP: `package.json`, `angular.json`, `src/app/app.component.ts`, secciones por componente.
+4. En otra terminal (opcional, si tienes tiempo en vivo):
 
    ```bash
    unzip alpha.zip -d /tmp/demo-export && cd /tmp/demo-export
@@ -169,11 +170,11 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 ## Escena 9 — Agente WebMCP nativo (45 s, opcional)
 
-**Solo si tenés Edge 147+ o Chrome 149+ con WebMCP habilitado** (OT en producción o flag `enable-webmcp-testing` en local).
+**Solo si tienes Edge 147+ o Chrome 149+ con WebMCP habilitado** (OT en producción o flag `enable-webmcp-testing` en local).
 
-1. Señalá el badge **WebMCP** en verde en la toolbar del canvas.
-2. Pedile al agente del navegador algo como: *"Creá una card con un botón primary debajo de root"*.
-3. Mostrá que las mismas tools del panel se invocan sin el simulador.
+1. Señala el badge **WebMCP** en verde en la toolbar del canvas.
+2. Pídele al agente del navegador algo como: *"Crea una card con un botón primary debajo de root"*.
+3. Muestra que las mismas tools del panel se invocan sin el simulador.
 4. Si falla o no hay agente: *"El simulador y el polyfill cubren el mismo contrato."*
 
 ---
@@ -182,7 +183,7 @@ npm start        # http://localhost:4200 → /project/alpha (o último proyecto 
 
 **Objetivo:** cerrar con el diagrama del README.
 
-Mostrá (o narrá) el flujo:
+Muestra (o narra) el flujo:
 
 ```
 AI Agent → navigator.modelContext → Tool Registry → Angular DI → CommandBus
@@ -204,7 +205,7 @@ Frase clave: *"WebMCP es experimental; la lógica de negocio vive en Commands y 
 
 ## Guion rápido ⚡ (~3 min)
 
-Si tenés poco tiempo, solo estas escenas:
+Si tienes poco tiempo, solo estas escenas:
 
 1. **Escena 0** — mapa del Studio (20 s, recortado).
 2. **Escena 2** — agente + Preview (60 s).
@@ -224,7 +225,7 @@ npx playwright install chromium   # una vez
 npm run demo:readme               # graba hero + genera docs/demo.gif optimizado (~1 MB)
 ```
 
-Flujo del hero (`e2e/hero.spec.ts`): 4 paneles → **＋ Nuevo** → paleta (Card, Botón, Texto) → **drag & drop** → **Undo** → simulador `create_component` → narración en **Observador** → **Preview**.
+Flujo del hero (`e2e/hero.spec.ts`): 4 paneles → **Proyecto → Nuevo** → **＋ Añadir** (Card, Botón, Texto) → **drag & drop** → **Undo** → playbook **Landing analytics** → **Observador** (replay) → **Preview**.
 
 Pipeline: **ffmpeg** (8 fps, 960 px, paleta 96) + **gifsicle** (`-O3 --lossy=80 --colors 128`). Solo optimizar: `npm run demo:optimize`.
 
@@ -239,7 +240,7 @@ Requisitos: **ffmpeg** en el PATH y **gifsicle** vía `npm install` (devDependen
 
 > El ritmo se ajusta con `PACE` en `e2e/demo.spec.ts` (650 ms por paso).
 > El recorrido automatizado cubre las **escenas 0–8** del guion completo (edición manual, agente, Signal Forms, Observador, undo, Docs, multiproyecto, Angular ZIP).
-> Para la versión con audio y escena 9 (agente nativo), grabá manualmente siguiendo este guion.
+> Para la versión con audio y escena 9 (agente nativo), graba manualmente siguiendo este guion.
 
 ### Manual
 
@@ -253,9 +254,9 @@ Requisitos: **ffmpeg** en el PATH y **gifsicle** vía `npm install` (devDependen
 **Tips de grabación**
 
 - Resolución 1920×1080 o 1440×900; zoom del navegador al 100 %.
-- Ocultá bookmarks y extensiones ruidosas.
-- Mové el mouse con calma; pausá 1–2 s después de cada acción clave.
-- Si grabás audio, leé las *frases clave* de cada escena casi textual.
+- Oculta bookmarks y extensiones ruidosas.
+- Mueve el mouse con calma; pausa 1–2 s después de cada acción clave.
+- Si grabas audio, lee las *frases clave* de cada escena casi textual.
 
 ---
 
@@ -263,12 +264,12 @@ Requisitos: **ffmpeg** en el PATH y **gifsicle** vía `npm install` (devDependen
 
 | Panel | Mensaje para la audiencia |
 |-------|---------------------------|
-| Árbol | Paleta, DnD, teclado; misma mutación que las tools |
+| Árbol | Menú ＋ Añadir, DnD, teclado; misma mutación que las tools |
 | Canvas | Preview = UI real; Estructura = depuración del árbol |
 | Herramientas | Documentación viva del contrato WebMCP |
 | Consola Observador | IA explicable: qué, por qué, quién (🤖/🙂) |
 | Consola Tool calls | Log técnico para desarrolladores |
-| Topbar | Multiproyecto + export JSON + **Angular ZIP** |
+| Topbar | Multiproyecto + export JSON + **Angular ZIP** + **Compartir** |
 | Docs | Auto-cleanup de tools por ruta |
 
 ---

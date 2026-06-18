@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { ComponentNode } from '../../../core/state/component-tree.types';
+import { textSizeClass } from './preview-layout';
 
 /** Componentes presentacionales que la IA "renderiza" vía NgComponentOutlet. */
 
@@ -23,11 +24,20 @@ export class PreviewButton {
 @Component({
   selector: 'app-preview-text',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="pv-text">{{ node().props['text'] || node().label }}</span>`,
-  styles: [`.pv-text { font-size:.9rem; color:var(--fg); }`],
+  template: `<span [class]="sizeClass()">{{ node().props['text'] || node().label }}</span>`,
+  styles: [
+    `
+    .pv-text-body { font-size:.9rem; color:var(--fg); }
+    .pv-text-hero { font-size:1.45rem; font-weight:600; color:var(--fg); line-height:1.2; }
+    .pv-text-caption { font-size:.75rem; color:var(--muted); }
+  `,
+  ],
 })
 export class PreviewText {
   readonly node = input.required<ComponentNode>();
+  protected sizeClass(): string {
+    return textSizeClass(this.node().props);
+  }
 }
 
 @Component({
@@ -38,4 +48,55 @@ export class PreviewText {
 })
 export class PreviewInput {
   readonly node = input.required<ComponentNode>();
+}
+
+@Component({
+  selector: 'app-preview-link',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<a class="pv-link" [href]="href()" target="_blank" rel="noopener">{{ text() }}</a>`,
+  styles: [`.pv-link { color:var(--accent); font-size:.85rem; text-decoration:none; } .pv-link:hover { text-decoration:underline; }`],
+})
+export class PreviewLink {
+  readonly node = input.required<ComponentNode>();
+  protected href(): string {
+    return this.node().props['href'] || '#';
+  }
+  protected text(): string {
+    return this.node().props['text'] || this.node().label;
+  }
+}
+
+@Component({
+  selector: 'app-preview-divider',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<hr class="pv-divider" [attr.aria-label]="node().label" />`,
+  styles: [`.pv-divider { border:0; border-top:1px solid var(--border); margin:.5rem 0; width:100%; }`],
+})
+export class PreviewDivider {
+  readonly node = input.required<ComponentNode>();
+}
+
+@Component({
+  selector: 'app-preview-image',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    @if (src()) {
+      <img class="pv-img" [src]="src()" [alt]="alt()" />
+    } @else {
+      <span class="pv-img-ph">🖼 sin src</span>
+    }
+  `,
+  styles: [
+    `.pv-img { max-width:100%; border-radius:8px; border:1px solid var(--border); }`,
+    `.pv-img-ph { font-size:.75rem; color:var(--muted); padding:.5rem; border:1px dashed var(--border); border-radius:8px; }`,
+  ],
+})
+export class PreviewImage {
+  readonly node = input.required<ComponentNode>();
+  protected src(): string {
+    return this.node().props['src'] ?? '';
+  }
+  protected alt(): string {
+    return this.node().props['alt'] || this.node().label;
+  }
 }
