@@ -23,6 +23,8 @@ import { AgentConsentStore } from '../state/agent-consent.store';
 import { treeSchemaAsJson } from '../export/tree-schema';
 import { TelemetryStore } from '../state/telemetry.store';
 import { downloadBlob } from '../export/project-zip';
+import type { AgentLane } from '../agents/agent-lane.types';
+import { LaneScopedEditingTools } from './lane-scoped-editing.tools';
 
 /**
  * Lógica detrás de las tools de edición.
@@ -41,50 +43,67 @@ export class EditingToolsService {
   private readonly consent = inject(AgentConsentStore);
   private readonly telemetry = inject(TelemetryStore);
 
-  createComponent(kind: string, parentId?: string, rationale = ''): ToolExecuteResult {
+  /** Etiqueta cada despacho con un carril multi-agente (A|B). */
+  withLane(lane: AgentLane): LaneScopedEditingTools {
+    return new LaneScopedEditingTools(this, lane);
+  }
+
+  createComponent(kind: string, parentId?: string, rationale = '', lane?: AgentLane): ToolExecuteResult {
     const k = this.asKind(kind);
-    if (!k) return this.emit('create_component', { kind, parentId }, `kind inválido: ${kind}`, 'error', rationale, []);
+    if (!k) return this.emit('create_component', { kind, parentId }, `kind inválido: ${kind}`, 'error', rationale, [], lane);
     const parent = parentId && this.tree.node(parentId) ? parentId : this.tree.rootId();
-    this.bus.dispatch(createComponent(parent, k), 'agent');
+    this.bus.dispatch(createComponent(parent, k), 'agent', { lane });
     const newId = this.tree.selectedId() ?? '';
-    return this.emit('create_component', { kind: k, parentId: parent }, `Creado ${k} (${newId}) en ${parent}`, 'ok', rationale, [newId]);
+    return this.emit('create_component', { kind: k, parentId: parent }, `Creado ${k} (${newId}) en ${parent}`, 'ok', rationale, [newId], lane);
   }
 
-  updateComponent(id: string, label?: string, props?: Record<string, string>, rationale = ''): ToolExecuteResult {
+  updateComponent(
+    id: string,
+    label?: string,
+    props?: Record<string, string>,
+    rationale = '',
+    lane?: AgentLane,
+  ): ToolExecuteResult {
     const node = this.tree.node(id);
-    if (!node) return this.emit('update_component', { id }, `No existe el nodo ${id}`, 'error', rationale, []);
-    this.bus.dispatch(updateNode(id, label ?? node.label, props ?? {}), 'agent');
-    return this.emit('update_component', { id, label, props }, `Actualizado ${id}`, 'ok', rationale, [id]);
+    if (!node) return this.emit('update_component', { id }, `No existe el nodo ${id}`, 'error', rationale, [], lane);
+    this.bus.dispatch(updateNode(id, label ?? node.label, props ?? {}), 'agent', { lane });
+    return this.emit('update_component', { id, label, props }, `Actualizado ${id}`, 'ok', rationale, [id], lane);
   }
 
-  async deleteComponent(id: string, rationale = ''): Promise<ToolExecuteResult> {
+  async deleteComponent(id: string, rationale = '', lane?: AgentLane): Promise<ToolExecuteResult> {
     const node = this.tree.node(id);
-    if (!node) return this.emit('delete_component', { id }, `No existe el nodo ${id}`, 'error', rationale, []);
-    if (node.parentId === null) return this.emit('delete_component', { id }, 'No se puede borrar la raíz', 'error', rationale, []);
+    if (!node) return this.emit('delete_component', { id }, `No existe el nodo ${id}`, 'error', rationale, [], lane);
+    if (node.parentId === null) return this.emit('delete_component', { id }, 'No se puede borrar la raíz', 'error', rationale, [], lane);
     const ok = await this.consent.request(
       'delete_component',
       `Borrar ${node.kind} "${node.label}" (${id}) y su subárbol`,
       { id },
     );
-    if (!ok) return this.emit('delete_component', { id }, 'Rechazado por el usuario', 'error', rationale, []);
-    this.bus.dispatch(deleteComponent(id), 'agent');
-    return this.emit('delete_component', { id }, `Borrado ${id}`, 'ok', rationale, [id]);
+    if (!ok) return this.emit('delete_component', { id }, 'Rechazado por el usuario', 'error', rationale, [], lane);
+    this.bus.dispatch(deleteComponent(id), 'agent', { lane });
+    return this.emit('delete_component', { id }, `Borrado ${id}`, 'ok', rationale, [id], lane);
   }
 
-  moveComponent(id: string, newParentId: string, index: number, rationale = ''): ToolExecuteResult {
+  moveComponent(
+    id: string,
+    newParentId: string,
+    index: number,
+    rationale = '',
+    lane?: AgentLane,
+  ): ToolExecuteResult {
     if (!this.tree.node(id) || !this.tree.node(newParentId)) {
-      return this.emit('move_component', { id, newParentId, index }, 'Nodo o destino inexistente', 'error', rationale, []);
+      return this.emit('move_component', { id, newParentId, index }, 'Nodo o destino inexistente', 'error', rationale, [], lane);
     }
     if (id === newParentId || this.tree.isAncestor(id, newParentId)) {
-      return this.emit('move_component', { id, newParentId, index }, 'Movimiento inválido (ciclo)', 'error', rationale, []);
+      return this.emit('move_component', { id, newParentId, index }, 'Movimiento inválido (ciclo)', 'error', rationale, [], lane);
     }
-    this.bus.dispatch(moveComponent(id, newParentId, index), 'agent');
-    return this.emit('move_component', { id, newParentId, index }, `Movido ${id} → ${newParentId}[${index}]`, 'ok', rationale, [id, newParentId]);
+    this.bus.dispatch(moveComponent(id, newParentId, index), 'agent', { lane });
+    return this.emit('move_component', { id, newParentId, index }, `Movido ${id} → ${newParentId}[${index}]`, 'ok', rationale, [id, newParentId], lane);
   }
 
-  readTree(rationale = ''): ToolExecuteResult {
+  readTree(rationale = '', lane?: AgentLane): ToolExecuteResult {
     const text = JSON.stringify(serializeTree(this.tree.state()));
-    return this.emit('read_tree', {}, text, 'ok', rationale, []);
+    return this.emit('read_tree', {}, text, 'ok', rationale, [], lane);
   }
 
   listTypes(rationale = ''): ToolExecuteResult {
@@ -147,7 +166,7 @@ export class EditingToolsService {
         'ok',
         why,
         [],
-        'agent',
+        undefined,
         true,
       );
     } catch (e) {
@@ -210,7 +229,7 @@ export class EditingToolsService {
         'ok',
         rationale,
         [state.rootId],
-        'agent',
+        undefined,
         true,
       );
     } catch (e) {
@@ -240,12 +259,16 @@ export class EditingToolsService {
     status: 'ok' | 'error',
     rationale: string,
     affected: string[],
-    origin: ToolOrigin = 'agent',
+    lane?: AgentLane,
     skipNarrate = false,
+    origin: ToolOrigin = 'agent',
   ): ToolExecuteResult {
     const at = Date.now();
     const isError = status === 'error';
-    this.log.record({ toolName, args, result, status, origin, durationMs: 0, at });
+    const meta = this.bus.lastMeta();
+    const conflict = meta?.conflict ?? false;
+    const conflictNote = conflict ? ' [last-write-wins: conflicto con otro carril]' : '';
+    this.log.record({ toolName, args, result, status, origin, durationMs: 0, at, lane });
     if (!isError && origin === 'agent') {
       const t = toolName === 'run_playbook' ? 'playbook' : 'tool_invoke';
       this.telemetry.record(t, toolName);
@@ -253,12 +276,14 @@ export class EditingToolsService {
     if (!skipNarrate) {
       this.observer.narrate({
         action: toolName,
-        what: result,
+        what: result + conflictNote,
         rationale: rationale.trim() || 'El agente no explicó el motivo.',
         origin,
         affected: affected.filter(Boolean),
         status,
         at,
+        lane,
+        conflict,
       });
     }
     return { text: result, isError };

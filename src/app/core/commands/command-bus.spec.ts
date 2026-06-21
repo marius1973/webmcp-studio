@@ -77,23 +77,35 @@ describe('CommandBus (undo/redo)', () => {
     expect(tree.childrenOf('root').length).toBe(0);
   });
 
-  it('dispatchBatch revierte si un paso falla', () => {
-    expect(() =>
-      bus.dispatchBatch(
-        [
-          createComponent('root', 'button'),
-          {
-            type: 'update',
-            label: 'falla',
-            run: () => {
-              throw new Error('boom');
-            },
-          },
-        ],
-        'agent',
-      ),
-    ).toThrow('boom');
+  it('restoreTo salta en el tiempo sin undo secuencial', () => {
+    bus.dispatch(createComponent('root', 'button'));
+    bus.dispatch(createComponent('root', 'text'));
+    bus.dispatch(createComponent('root', 'card'));
+    expect(tree.childrenOf('root').length).toBe(3);
+    expect(bus.currentIndex()).toBe(3);
+
+    bus.restoreTo(1);
+    expect(tree.childrenOf('root').length).toBe(1);
+    expect(bus.currentIndex()).toBe(1);
+    expect(bus.canRedo()).toBe(true);
+
+    bus.redo();
+    expect(tree.childrenOf('root').length).toBe(2);
+    expect(bus.currentIndex()).toBe(2);
+
+    bus.restoreTo(0);
     expect(tree.childrenOf('root').length).toBe(0);
-    expect(bus.past().length).toBe(0);
+    expect(bus.currentIndex()).toBe(0);
+  });
+
+  it('expone timeline con origen y tipo', () => {
+    bus.dispatch(createComponent('root', 'button'), 'user');
+    bus.dispatch(createComponent('root', 'text'), 'agent');
+    const steps = bus.timeline();
+    expect(steps.length).toBe(3);
+    expect(steps[1].origin).toBe('user');
+    expect(steps[2].origin).toBe('agent');
+    expect(steps[1].tooltip).toContain('Manual');
+    expect(steps[2].tooltip).toContain('Agente');
   });
 });

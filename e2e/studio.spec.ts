@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { addFromPalette, openAgentStrip } from './ui-helpers';
+import { addFromPalette, openAgentStrip, redoHistory, undoHistory } from './ui-helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -8,9 +8,9 @@ test.beforeEach(async ({ page }) => {
 
 test('crea un componente desde la paleta y lo deshace', async ({ page }) => {
   await addFromPalette(page, 'Botón');
-  await expect(page.getByText(/1 acciones/)).toBeVisible();
-  await page.getByRole('button', { name: /Undo/ }).click();
-  await expect(page.getByText(/0 acciones/)).toBeVisible();
+  await expect(page.locator('app-history-slider .pos')).toHaveText('1 / 1');
+  await undoHistory(page);
+  await expect(page.locator('app-history-slider .pos')).toHaveText('0 / 1');
 });
 
 test('el agente (simulador) crea y narra en el Observador', async ({ page }) => {

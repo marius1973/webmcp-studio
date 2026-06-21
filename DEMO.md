@@ -6,7 +6,7 @@ Guion completo para presentación en vivo, video o GIF. Cubre editor manual, age
 |---------|----------|---------------|
 | **Completa** | ~8 min | README, conferencias, primer contacto con el repo |
 | **Rápida** | ~3 min | Escenas marcadas con ⚡ abajo |
-| **Automatizada (README)** | ~15 s | `npm run demo:readme` — GIF hero: 4 paneles, DnD, undo, playbook, Observador |
+| **Automatizada (README)** | ~20 s | `npm run demo:readme` — MP4 hero: paleta, DnD, historial con slider, playbook, Observador, Preview |
 | **Automatizada (completa)** | ~2–3 min | `npm run demo:video` (Playwright, alineado con escenas 0–8) |
 
 **Navegador ideal (agente nativo):** Edge 147+ (`navigator.modelContext` integrado) o Chrome 149+ ([Origin Trial](https://developer.chrome.com/docs/ai/webmcp); flag local: `chrome://flags/#enable-webmcp-testing`).  
@@ -216,27 +216,28 @@ Si tienes poco tiempo, solo estas escenas:
 
 ---
 
-## Grabar la demo (video / GIF)
+## Grabar la demo (video)
 
-### GIF del README (~15 s)
+### MP4 del README (~20 s)
 
 ```bash
 npx playwright install chromium   # una vez
-npm run demo:readme               # graba hero + genera docs/demo.gif optimizado (~1 MB)
+npm run demo:readme               # graba hero + genera docs/demo.mp4 (ffmpeg)
 ```
 
-Flujo del hero (`e2e/hero.spec.ts`): 4 paneles → **Proyecto → Nuevo** → **＋ Añadir** (Card, Botón, Texto) → **drag & drop** → **Undo** → playbook **Landing analytics** → **Observador** (replay) → **Preview**.
+Flujo del hero (`e2e/hero.spec.ts`): 4 paneles → **Proyecto → Nuevo** → **＋ Añadir** (Card, Botón, Texto) → **drag & drop** → **historial ←** → playbook **Landing analytics** → **Observador** (replay) → **Preview** → **Con datos**.
 
-Pipeline: **ffmpeg** (8 fps, 960 px, paleta 96) + **gifsicle** (`-O3 --lossy=80 --colors 128`). Solo optimizar: `npm run demo:optimize`.
+Pipeline: Playwright graba `video.webm` → **ffmpeg** (H.264, 960 px, 24 fps, `+faststart`). Alternativa GIF: `npm run demo:gif` (+ gifsicle).
 
 ### Demo completa (escenas 0–8)
 
 ```bash
 npm run demo:video
-npm run demo:gif demo             # recorrido largo → docs/demo.gif
+npm run demo:mp4 demo             # recorrido largo → docs/demo.mp4
+npm run demo:gif demo             # recorrido largo → docs/demo.gif (legado)
 ```
 
-Requisitos: **ffmpeg** en el PATH y **gifsicle** vía `npm install` (devDependency). El script `scripts/demo-gif.mjs` busca el `video.webm` del prefijo indicado (`hero` por defecto).
+Requisitos: **ffmpeg** en el PATH. El script `scripts/demo-mp4.mjs` busca el `video.webm` del prefijo indicado (`hero` por defecto).
 
 > El ritmo se ajusta con `PACE` en `e2e/demo.spec.ts` (650 ms por paso).
 > El recorrido automatizado cubre las **escenas 0–8** del guion completo (edición manual, agente, Signal Forms, Observador, undo, Docs, multiproyecto, Angular ZIP).
@@ -265,7 +266,7 @@ Requisitos: **ffmpeg** en el PATH y **gifsicle** vía `npm install` (devDependen
 | Panel | Mensaje para la audiencia |
 |-------|---------------------------|
 | Árbol | Menú ＋ Añadir, DnD, teclado; misma mutación que las tools |
-| Canvas | Preview = UI real; Estructura = depuración del árbol |
+| Canvas | Preview = UI real; edición directa; **historial con slider**; Estructura = depuración |
 | Herramientas | Documentación viva del contrato WebMCP |
 | Consola Observador | IA explicable: qué, por qué, quién (🤖/🙂) |
 | Consola Tool calls | Log técnico para desarrolladores |

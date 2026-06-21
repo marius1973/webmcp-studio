@@ -1,9 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { addFromPalette, createBlankProject, openAgentStrip } from './ui-helpers';
+import { addFromPalette, createBlankProject, openAgentStrip, undoHistory } from './ui-helpers';
 
 /**
- * GIF hero del README (~18 s): 4 paneles, edición manual, drag & drop, undo, playbook,
- * replay en el Observador y Preview.
+ * Video hero del README (~20 s): 4 paneles, paleta, drag & drop, historial con slider,
+ * playbook, replay en el Observador y Preview con datos mock.
  */
 const PACE = 800;
 
@@ -58,7 +58,8 @@ test('flujo real del Studio (hero README)', async ({ page }) => {
   await expect(observer.locator('.step').filter({ hasText: 'move_component' }).first()).toBeVisible();
   await beat();
 
-  await page.getByRole('button', { name: /Undo/ }).click();
+  await expect(page.locator('app-history-slider')).toBeVisible();
+  await undoHistory(page);
   await beat();
 
   await openAgentStrip(page);
@@ -77,6 +78,8 @@ test('flujo real del Studio (hero README)', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Preview' }).click();
   await expect(page.locator('app-node-renderer')).toBeVisible();
+  await beat();
+  await page.getByRole('button', { name: 'Con datos' }).click();
   await beat();
   await beat();
 });

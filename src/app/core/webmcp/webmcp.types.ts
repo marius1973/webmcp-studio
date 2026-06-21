@@ -1,5 +1,7 @@
 /** Tipos compartidos de la capa WebMCP del Studio. */
 
+import type { AgentLane } from '../agents/agent-lane.types';
+
 export type ToolOrigin = 'user' | 'agent';
 export type ToolSource = 'app' | 'route' | 'service';
 
@@ -26,4 +28,6 @@ export interface ToolCallLog {
   origin: ToolOrigin;
   durationMs: number;
   at: number;
+  /** Carril multi-agente (opcional; no rompe logs sin lane). */
+  lane?: AgentLane;
 }

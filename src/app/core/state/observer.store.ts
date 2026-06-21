@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { ToolOrigin } from '../webmcp/webmcp.types';
+import type { AgentLane } from '../agents/agent-lane.types';
 
 /** Un paso narrado del Modo Observador: qué pasó y por qué. */
 export interface ObserverEvent {
@@ -10,6 +11,10 @@ export interface ObserverEvent {
   affected: string[];   // ids de nodos tocados
   status: 'ok' | 'error';
   at: number;
+  /** Carril multi-agente (opcional). */
+  lane?: AgentLane;
+  /** Last-write-wins entre carriles en el mismo nodo. */
+  conflict?: boolean;
 }
 
 /**
@@ -24,6 +29,8 @@ export class ObserverStore {
   readonly events = this._events.asReadonly();
   readonly count = computed(() => this._events().length);
   readonly agentCount = computed(() => this._events().filter((e) => e.origin === 'agent').length);
+  readonly laneCountA = computed(() => this._events().filter((e) => e.lane === 'A').length);
+  readonly laneCountB = computed(() => this._events().filter((e) => e.lane === 'B').length);
 
   narrate(event: ObserverEvent): void {
     if (!this.enabled()) return;

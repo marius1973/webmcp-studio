@@ -40,3 +40,11 @@ export async function renameProject(page: Page, name: string) {
   await page.locator('#rename-name').fill(name);
   await page.getByRole('button', { name: /Guardar/ }).click();
 }
+
+export async function undoHistory(page: Page) {
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+}
+
+export async function redoHistory(page: Page) {
+  await page.getByRole('button', { name: 'Rehacer' }).click();
+}

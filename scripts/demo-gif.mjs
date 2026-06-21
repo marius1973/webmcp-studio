@@ -1,40 +1,12 @@
-import { readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { optimizeGif } from './demo-optimize.mjs';
+import { demoVideoHint, findDemoVideo } from './demo-video-source.mjs';
 
 const prefer = process.argv[2] ?? 'hero';
 
-function pickVideo(videos, prefer) {
-  if (!videos.length) return null;
-  const preferred = videos.filter((v) => v.path.toLowerCase().includes(prefer.toLowerCase()));
-  if (!preferred.length) return null;
-  return preferred.reduce((a, b) => (a.mtime > b.mtime ? a : b)).path;
-}
-
-async function collectVideos(dir) {
-  const videos = [];
-
-  async function walk(current) {
-    for (const entry of await readdir(current, { withFileTypes: true })) {
-      const full = join(current, entry.name);
-      if (entry.isDirectory()) {
-        await walk(full);
-        continue;
-      }
-      if (entry.name !== 'video.webm') continue;
-      videos.push({ path: full, mtime: (await stat(full)).mtimeMs });
-    }
-  }
-
-  await walk(dir);
-  return videos;
-}
-
-const input = pickVideo(await collectVideos('test-results'), prefer);
+const input = await findDemoVideo(prefer);
 if (!input) {
-  const hint = prefer === 'hero' ? 'npm run demo:hero' : `npm run demo:video (o pasa otro prefijo: node scripts/demo-gif.mjs <prefijo>)`;
-  console.error(`No se encontró video.webm para "${prefer}". Ejecuta primero: ${hint}`);
+  console.error(`No se encontró video.webm para "${prefer}". Ejecuta primero: ${demoVideoHint(prefer)}`);
   process.exit(1);
 }
 console.log(`Fuente: ${input}`);

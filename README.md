@@ -1,6 +1,10 @@
 # Angular WebMCP Studio
 
 <p align="center">
+  <img src="public/icons/logo.png" alt="WebMCP Studio" width="140" />
+</p>
+
+<p align="center">
   <a href="https://github.com/marius1973/webmcp-studio/actions/workflows/ci.yml">
     <img src="https://github.com/marius1973/webmcp-studio/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
@@ -17,8 +21,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="WebMCP Studio: 4 paneles, paleta y drag & drop, undo, playbook Landing analytics, replay en el Observador y Preview" width="960" />
+  <video src="docs/demo.mp4" width="960" autoplay loop muted playsinline controls>
+    Demo de WebMCP Studio: paleta, drag & drop, historial con slider, playbook, Observador y Preview con datos.
+  </video>
 </p>
+<p align="center"><sub><a href="docs/demo.mp4">Descargar demo.mp4</a></sub></p>
 
 Un **IDE en el navegador** donde los agentes de IA editan estructura Angular en vivo — no generan código de una vez, sino que mutan, deshacen y observan paso a paso.
 
@@ -109,10 +116,13 @@ Cada mutación — manual o del agente — es una **tool WebMCP** o un **Command
 - **4 paneles**: árbol de componentes, canvas (Preview / Estructura), panel de herramientas y consola del agente.
 - **Árbol**: menú **＋ Añadir** (8 kinds), drag & drop (CDK), navegación por teclado (↑↓←→, Home/End, Supr).
 - **Canvas**: el **stage** (Preview / Estructura) ocupa el centro; inspector y simulador en secciones colapsables.
-- **Preview**: `NgComponentOutlet` + layout flex (`direction`, `gap`, `align`, `textSize`) — wireframe estructural.
+- **Preview**: `NgComponentOutlet` + layout flex (`direction`, `gap`, `align`, `textSize`) — wireframe estructural o **Con datos** (mock engine, sin mutar el árbol).
+- **Edición directa en canvas** (modo Preview): doble clic en texto/label/placeholder; arrastrar con ⠿; redimensionar contenedores/card/imagen; clic derecho → **Agregar hijo aquí**.
 - **Inspector**: Signal Form por tipo; visible al seleccionar un nodo (no root).
 - **Playbooks** en el simulador (colapsable): *Landing analytics*, *Formulario contacto* (un solo undo).
 - **Undo/redo** en la toolbar del canvas y atajos Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z o Ctrl+Y.
+- **Historial con slider**: línea de tiempo arrastrable bajo la toolbar; marcadores azul (manual), naranja (agente), rojo (destructivo); clic o slider para viajar al paso.
+- **Multi-agente serializado**: carriles `A`/`B` con `withLane()`, `ParallelAgentRunner`, conflictos last-write-wins en el Observador y botón **Demo: 2 agentes** (ver [`docs/CLIP-Y-MULTIAGENTE.md`](./docs/CLIP-Y-MULTIAGENTE.md)).
 
 ### WebMCP
 - Tools de edición: `create_component`, `update_component`, `delete_component`, `move_component`, `read_tree`, `list_component_types`, `undo`, `redo`, `export_project_code`, **`run_playbook`**, **`apply_patch`**, **`explain_selection`**, **`suggest_next`**, **`export_schema`**, **`list_playbooks`**.
@@ -161,13 +171,14 @@ Al abrir la app, `/` redirige al último proyecto utilizado o a **`/project/alph
 
 Para explorar más:
 
-1. Menú **＋ Añadir** en el árbol; drag & drop por ⠿; inspector al seleccionar un nodo.
-2. `suggest_next` / `explain_selection` desde el simulador (sección colapsable).
-3. Clic en un paso del **Observador** → resalta nodos afectados.
-4. **🔗 Compartir** copia URL con el árbol (`?share=`).
-5. Menú **Exportar → Angular ZIP** o tool `export_project_code`.
-6. Enlace **Docs** → observa el cambio de tools en el panel derecho.
-7. Checkbox **Stats** (telemetría local opt-in).
+1. Menú **＋ Añadir** en el árbol; drag & drop por ⠿; **edición directa** en Preview (doble clic, resize, clic derecho).
+2. **Historial con slider** bajo la toolbar del canvas — arrastra o haz clic en un paso.
+3. `suggest_next` / `explain_selection` desde el simulador (sección colapsable).
+4. Clic en un paso del **Observador** → resalta nodos afectados.
+5. **🔗 Compartir** copia URL con el árbol (`?share=`).
+6. Menú **Exportar → Angular ZIP** o tool `export_project_code`.
+7. Enlace **Docs** → observa el cambio de tools en el panel derecho.
+8. Toggle **Wireframe / Con datos** en Preview; checkbox **Stats** (telemetría local opt-in).
 
 <details>
 <summary>Cómo funciona internamente</summary>
@@ -206,24 +217,25 @@ src/app/
 │   ├── persistence/   # IndexedDB
 │   ├── state/         # stores (árbol, proyectos, observador, consent, telemetry)
 │   └── webmcp/        # tools, advisor, validación
-├── panels/            # árbol, canvas, consola, docs
-├── shell/             # layout 4 paneles + topbar
+├── panels/            # árbol, canvas (preview, edición directa), consola, docs
+├── shell/             # layout 4 paneles, topbar, history-slider
 └── app.routes.ts
 ```
 
-Documentación extra: [`docs/ORIGIN_TRIAL.md`](./docs/ORIGIN_TRIAL.md) · [`docs/MCP_BRIDGE.md`](./docs/MCP_BRIDGE.md) · [`docs/BUNDLE.md`](./docs/BUNDLE.md) · [`docs/LINKEDIN_ARTICLE.md`](./docs/LINKEDIN_ARTICLE.md)
+Documentación extra: [`docs/CLIP-Y-MULTIAGENTE.md`](./docs/CLIP-Y-MULTIAGENTE.md) · [`docs/ORIGIN_TRIAL.md`](./docs/ORIGIN_TRIAL.md) · [`docs/MCP_BRIDGE.md`](./docs/MCP_BRIDGE.md) · [`docs/BUNDLE.md`](./docs/BUNDLE.md) · [`docs/LINKEDIN_ARTICLE.md`](./docs/LINKEDIN_ARTICLE.md)
 
 ## Testing
 
 ```bash
-npm test              # unit (Vitest) — 66 tests
+npm test              # unit (Vitest) — 81 tests
 npm run test:watch
 npm run test:e2e      # e2e (Playwright) — también en CI
 npm run benchmark     # WebMCP vs DOM simulado (honesto)
 npm run bridge        # hub WebSocket para integración externa (dev)
-npm run demo:hero     # GIF hero del README (~15 s)
-npm run demo:gif
-npm run demo:readme   # hero + gif optimizado
+npm run demo:hero     # graba flujo hero (Playwright → video.webm)
+npm run demo:mp4      # convierte a docs/demo.mp4 (ffmpeg)
+npm run demo:readme   # hero + mp4 para el README
+npm run demo:gif      # alternativa GIF (legado)
 npm run demo:video    # recorrido completo (DEMO.md)
 ```
 

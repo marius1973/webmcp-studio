@@ -5,7 +5,9 @@ import {
   exportAngularZip,
   openAgentStrip,
   openInspector,
+  redoHistory,
   renameProject,
+  undoHistory,
 } from './ui-helpers';
 
 const PACE = 650;
@@ -17,7 +19,7 @@ test('recorrido completo del Studio', async ({ page }) => {
 
   await page.goto('/');
   await page.waitForURL(/\/project\//);
-  await expect(page.getByText('▰ WebMCP Studio')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'WebMCP Studio' })).toBeVisible();
   await expect(page.locator('app-component-tree')).toBeVisible();
   await expect(page.locator('app-tool-panel')).toBeVisible();
   await expect(page.locator('app-agent-console')).toBeVisible();
@@ -78,12 +80,11 @@ test('recorrido completo del Studio', async ({ page }) => {
   await observerToggle.check();
   await beat();
 
-  const undo = page.getByRole('button', { name: /Undo/ });
-  await undo.click();
+  await undoHistory(page);
   await beat();
-  await undo.click();
+  await undoHistory(page);
   await beat();
-  await page.getByRole('button', { name: /Redo/ }).click();
+  await redoHistory(page);
   await beat();
 
   await page.getByRole('link', { name: 'Docs' }).click();

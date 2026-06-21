@@ -12,6 +12,7 @@ import { buildShareUrl } from '../core/state/project-share';
 import { AgentConsentStore } from '../core/state/agent-consent.store';
 import { PROJECT_TEMPLATES } from '../core/state/project-templates';
 import { TelemetryStore } from '../core/state/telemetry.store';
+import { BRAND_LOGO, brandLogoSrcset } from '../core/brand/brand-logo';
 
 type ShellMenu = 'project' | 'export' | null;
 
@@ -21,7 +22,7 @@ type ShellMenu = 'project' | 'export' | null;
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ComponentTree, ToolPanel, AgentConsole],
   template: `
     <header class="topbar">
-      <span class="logo">▰ WebMCP Studio</span>
+      <a class="logo" routerLink="/" title="WebMCP Studio">WebMCP Studio</a>
 
       <div class="project-bar">
         <label class="sr-label" for="proj">Proyecto</label>
@@ -48,6 +49,7 @@ type ShellMenu = 'project' | 'export' | null;
             <div class="menu" role="menu" (click)="$event.stopPropagation()">
               <button type="button" role="menuitem" (click)="openNewProjectModal()">＋ Nuevo…</button>
               <button type="button" role="menuitem" (click)="openRenameModal()" [disabled]="!projects.currentId()">✎ Renombrar…</button>
+              <button type="button" role="menuitem" (click)="openAboutModal()">ℹ Acerca de…</button>
               <button type="button" role="menuitem" class="danger-text" (click)="deleteProject()" [disabled]="!projects.currentId()">🗑 Borrar</button>
             </div>
           }
@@ -129,6 +131,28 @@ type ShellMenu = 'project' | 'export' | null;
       </div>
     }
 
+    @if (aboutOpen()) {
+      <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="about-title" (click)="closeAboutModal()">
+        <div class="modal-card about-card" (click)="$event.stopPropagation()">
+          <img
+            class="about-logo"
+            [src]="brand.src"
+            [attr.srcset]="brandSrcset"
+            alt="WebMCP Studio"
+            [width]="brand.about"
+            [height]="brand.about"
+            decoding="async"
+          />
+          <h2 id="about-title">WebMCP Studio</h2>
+          <p class="about-tagline">IDE en el navegador donde agentes de IA editan estructura Angular con tools tipadas, undo/redo y export real.</p>
+          <div class="modal-actions">
+            <a class="primary link-btn" routerLink="/docs" (click)="closeAboutModal()">Ver documentación</a>
+            <button type="button" class="ghost" (click)="closeAboutModal()">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    }
+
     @if (consent.pending(); as req) {
       <div class="consent-backdrop" role="dialog" aria-modal="true" aria-labelledby="consent-title">
         <div class="consent-card">
@@ -149,7 +173,7 @@ type ShellMenu = 'project' | 'export' | null;
   styles: [`
     :host { display:flex; flex-direction:column; height:100vh; }
     .topbar { display:flex; align-items:center; gap:.8rem; padding:.55rem 1rem; background:var(--surface-1); border-bottom:1px solid var(--border); flex-wrap:wrap; }
-    .logo { font-weight:700; flex-shrink:0; }
+    .logo { flex-shrink:0; text-decoration:none; color:inherit; font-weight:700; font-size:.9rem; }
     .project-bar { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
     .sr-label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
     select { background:var(--surface-2); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:.25rem .5rem; font-size:.78rem; }
@@ -218,6 +242,14 @@ type ShellMenu = 'project' | 'export' | null;
     .ghost { background:transparent; border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:.35rem .8rem; cursor:pointer; font-size:.8rem; }
     .consent-card code { color:var(--accent); }
     .consent-opt { font-size:.72rem; color:var(--muted); display:flex; gap:.35rem; align-items:center; margin-top:.6rem; }
+    .about-card { text-align:center; max-width:22rem; }
+    .about-logo {
+      display:block; margin:0 auto .75rem;
+      width:10rem; height:10rem;
+      object-fit:contain;
+    }
+    .about-tagline { font-size:.82rem; color:var(--muted); line-height:1.45; margin:0; }
+    .link-btn { display:inline-block; text-decoration:none; text-align:center; }
   `],
 })
 export class AppShell {
@@ -236,6 +268,9 @@ export class AppShell {
   protected readonly newProjectName = signal('');
   protected readonly renameOpen = signal(false);
   protected readonly renameName = signal('');
+  protected readonly aboutOpen = signal(false);
+  protected readonly brand = BRAND_LOGO;
+  protected readonly brandSrcset = brandLogoSrcset();
 
   @HostListener('document:click')
   protected closeMenus(): void {
@@ -288,6 +323,15 @@ export class AppShell {
 
   protected closeRenameModal(): void {
     this.renameOpen.set(false);
+  }
+
+  protected openAboutModal(): void {
+    this.openMenu.set(null);
+    this.aboutOpen.set(true);
+  }
+
+  protected closeAboutModal(): void {
+    this.aboutOpen.set(false);
   }
 
   protected onRenameInput(event: Event): void {

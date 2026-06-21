@@ -31,6 +31,8 @@ interface PropsModel {
   href: string;
   src: string;
   alt: string;
+  width: string;
+  height: string;
 }
 
 const TOOL_NAME = 'update_component_via_form';
@@ -100,6 +102,14 @@ const TOOL_NAME = 'update_component_via_form';
               <option value="center">center</option>
             </select>
           </div>
+          <div class="field">
+            <label for="prop-width">width (px)</label>
+            <input id="prop-width" [formField]="pform.width" placeholder="auto" />
+          </div>
+          <div class="field">
+            <label for="prop-height">height (px)</label>
+            <input id="prop-height" [formField]="pform.height" placeholder="auto" />
+          </div>
         }
         @if (kind === 'input') {
           <div class="field">
@@ -125,6 +135,14 @@ const TOOL_NAME = 'update_component_via_form';
           <div class="field">
             <label for="prop-alt">alt</label>
             <input id="prop-alt" [formField]="pform.alt" />
+          </div>
+          <div class="field">
+            <label for="prop-width">width (px)</label>
+            <input id="prop-width" [formField]="pform.width" placeholder="auto" />
+          </div>
+          <div class="field">
+            <label for="prop-height">height (px)</label>
+            <input id="prop-height" [formField]="pform.height" placeholder="auto" />
           </div>
         }
 
@@ -168,6 +186,8 @@ export class PropertiesForm {
     href: '',
     src: '',
     alt: '',
+    width: '',
+    height: '',
   });
 
   protected readonly pform = form(
@@ -232,6 +252,8 @@ export class PropertiesForm {
           href: node?.props['href'] ?? '',
           src: node?.props['src'] ?? '',
           alt: node?.props['alt'] ?? '',
+          width: node?.props['width'] ?? '',
+          height: node?.props['height'] ?? '',
         });
       });
     });
@@ -257,6 +279,8 @@ export class PropertiesForm {
       props['direction'] = m.direction;
       props['gap'] = m.gap;
       props['align'] = m.align;
+      if (m.width.trim()) props['width'] = m.width.trim();
+      if (m.height.trim()) props['height'] = m.height.trim();
     }
     if (kind === 'link') {
       props['href'] = m.href;
@@ -265,6 +289,8 @@ export class PropertiesForm {
     if (kind === 'image') {
       props['src'] = m.src;
       props['alt'] = m.alt;
+      if (m.width.trim()) props['width'] = m.width.trim();
+      if (m.height.trim()) props['height'] = m.height.trim();
     }
     this.bus.dispatch(updateNode(id, m.label, props), origin, {
       skipObserver: origin === 'agent',

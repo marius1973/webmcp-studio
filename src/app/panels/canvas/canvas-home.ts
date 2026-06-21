@@ -12,26 +12,39 @@ import { EditingToolsService } from '../../core/webmcp/editing-tools.service';
 import { ProjectStore } from '../../core/state/project.store';
 import { decodeTreeShare } from '../../core/state/project-share';
 import { PLAYBOOKS } from '../../core/playbooks/playbooks';
+import { PreviewModeStore } from '../../core/mock-data/preview-mode.store';
+import { HistorySlider } from '../../shell/history-slider/history-slider';
 
 type CanvasMode = 'structure' | 'preview';
 
 @Component({
   selector: 'app-canvas-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, NodeRenderer, PropertiesForm, NewComponentForm],
+  imports: [NgTemplateOutlet, NodeRenderer, PropertiesForm, NewComponentForm, HistorySlider],
   template: `
     <div class="toolbar">
-      <div class="group">
-        <button (click)="bus.undo()" [disabled]="!bus.canUndo()" title="Deshacer (Ctrl/Cmd+Z)">↶ Undo</button>
-        <button (click)="bus.redo()" [disabled]="!bus.canRedo()" title="Rehacer">↷ Redo</button>
-        <span class="count">{{ bus.count() }} acciones</span>
-      </div>
       <div class="group modes">
         <button [class.active]="mode() === 'preview'" (click)="mode.set('preview')">Preview</button>
         <button [class.active]="mode() === 'structure'" (click)="mode.set('structure')">Estructura</button>
       </div>
+      @if (mode() === 'preview') {
+        <div class="group preview-data" role="group" aria-label="Vista previa">
+          <button
+            type="button"
+            [class.active]="!previewData.isMock()"
+            (click)="previewData.setWireframe()"
+          >Wireframe</button>
+          <button
+            type="button"
+            [class.active]="previewData.isMock()"
+            (click)="previewData.setMock()"
+          >Con datos</button>
+        </div>
+      }
       <span class="badge" [class.ok]="cap.available">{{ cap.label }}</span>
     </div>
+
+    <app-history-slider />
 
     <div class="stage">
       @if (mode() === 'preview') {
@@ -93,6 +106,7 @@ type CanvasMode = 'structure' | 'preview';
     button { background:var(--surface-2); color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:.25rem .6rem; font-size:.78rem; cursor:pointer; }
     button:disabled { opacity:.4; cursor:not-allowed; }
     .modes button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .preview-data button.active { background:var(--ok-bg); color:var(--ok-fg); border-color:var(--ok-fg); }
     .count { font-size:.72rem; color:var(--muted); }
     .badge { margin-left:auto; font-size:.7rem; padding:.15rem .45rem; border-radius:6px; background:var(--warn-bg); color:var(--warn-fg); }
     .badge.ok { background:var(--ok-bg); color:var(--ok-fg); }
@@ -125,6 +139,7 @@ export class CanvasHome {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly playbooks = PLAYBOOKS;
+  protected readonly previewData = inject(PreviewModeStore);
 
   readonly id = input<string>();
 
